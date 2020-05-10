@@ -1,0 +1,37 @@
+<html>
+<head>
+<style>
+table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+td, th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
+</style>
+</head>
+<body>
+<h3>Welcome {{user}} to {{selBranchCode}} branch</h3>
+<h6>
+    {% if user_access < '1' %}
+    <a href="{{ url_for('branch') }}">Modify Branch</a> |
+    {% endif %}
+    {%if user_access < '2' %}
+    <a href="{{ url_for('signup') }}">register user</a> |
+    {%endif%}
+    {%if user_access < '3'%}
+    <a href="{{ url_for('billing') }}"> billing</a> |
+    <a href="{{ url_for('filling', error='success') }}"> Update Inventory</a> |
+    <a href="{{ url_for('logout') }}">sign out</a> |
+    {%endif%}
+</h6>
+</body>
+</html>

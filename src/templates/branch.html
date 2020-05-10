@@ -1,0 +1,11 @@
+{% include "include_this.html" %}
+{%if branchform %}
+<form action="" method="POST">
+    <h2>Please Add Branch</h2>
+
+    {{ branchform.branchCode }}
+    {{ branchform.branchAddress(placeholder="Enter Branch Address") }}
+    {{ branchform.submit}}
+  </form>
+ {%endif%}
+  <h6> {{ error }}</h6>

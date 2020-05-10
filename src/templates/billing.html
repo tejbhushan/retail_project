@@ -1,0 +1,32 @@
+{% include "include_this.html" %}
+<h6>{{error}}</h6>
+{%if billform %}
+<form method='POST'>
+    <h2>Billing</h2>
+    Customer Name : {{billform.customerName(placeholder="Customer Name")}}
+    Barcode : {{billform.itemBarcode(placeholder="Item Barcode")}}
+    Quantity : {{billform.itemQuantity(placeholder="Item Quantity")}}
+    {{billform.next}}
+    {{billform.submit}}
+    <table>
+        <thead>
+            <th>Item Barcode </th>
+            <th>Item Name </th>
+            <th>Item Price</th>
+            <th> Item Quantity</th>
+        </thead>
+        <tbody>
+            {%for list in listItems %}
+            <tr>
+                {% for i in list %}
+                    <td>{{i}}</td>
+                {%endfor%}
+            <tr>
+            {%endfor%}
+                <td> Total </td>
+                <td> {{total[0]}}</td>
+            </tr>
+        </tbody>
+    </table>
+</form>
+{%endif%}

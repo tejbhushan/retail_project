@@ -1,0 +1,8 @@
+    <form class="form-signin" action="" method="POST">
+        <h2 class="form-signin-heading">Please Sign In</h2>
+        {{ signinform.username(placeholder="username")}}
+        {{ signinform.password(placeholder="Password") }}
+        {{ signinform.selBranchCode }}
+        {{ signinform.submit}}
+      </form>
+      <h6> {{ error }}</h6>

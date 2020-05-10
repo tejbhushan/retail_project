@@ -1,0 +1,9 @@
+{% include "include_this.html" %}
+    <form class="form-signin" action="" method="POST">
+        <h2 class="form-signin-heading">Sign Up</h2>
+        {{ signupform.username(placeholder="User Name")}}
+        {{ signupform.password(placeholder="Password") }}
+        {{ signupform.user_access }}
+        {{ signupform.submit}}
+    </form>
+    <h6> {{ error }}</h6>
