@@ -1,0 +1,20 @@
+{% include "include_this.html" %}
+<h6>{{error}}</h6>
+
+
+<table>
+    <thead>
+        {% for col in salesHead %}
+        <th> {{col}} </th>
+        {%endfor%}
+    </thead>
+    <tbody>
+    {% for rows in salesDone %}
+    <tr>
+        {%for col in rows %}
+        <td> {{col}} </td>
+        {%endfor%}
+    </tr>
+    {%endfor%}
+</tbody>
+</table>

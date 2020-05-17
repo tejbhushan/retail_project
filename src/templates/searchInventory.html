@@ -1,0 +1,12 @@
+{% include "include_this.html" %}
+<form method="POST">
+    <h2>Seach Up</h2>
+    {{ searchInventoryForm.branchAreaName }}
+    {{ searchInventoryForm.branchUnitName }}
+    {{ searchInventoryForm.shopOrStock }}
+    {{ searchInventoryForm.itemBarcode }}
+    {{ searchInventoryForm.itemName }}
+    {{ searchInventoryForm.expiryDate }}
+    {{ searchInventoryForm.submit}}
+</form>
+<h6> {{ error }}</h6>
