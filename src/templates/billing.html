@@ -2,7 +2,6 @@
 <h6>{{error}}</h6>
 {%if billform %}
 <form method='POST'>
-    <h2>Billing</h2>
     Customer Name : {{billform.customerName(placeholder="Customer Name")}}
     Barcode : {{billform.itemBarcode(placeholder="Item Barcode")}}
     Quantity : {{billform.itemQuantity(placeholder="Item Quantity")}}
@@ -12,19 +11,23 @@
         <thead>
             <th>Item Barcode </th>
             <th>Item Name </th>
-            <th>Item Price</th>
+            <th>Item Price (1 Qty)</th>
             <th> Item Quantity</th>
+            <th> Item Expiry Date</th>
+            <th> Item Total Price</th>
         </thead>
         <tbody>
             {%for list in listItems %}
             <tr>
-                {% for i in list %}
+                {% for i in list[:-1] %}
                     <td>{{i}}</td>
                 {%endfor%}
             <tr>
             {%endfor%}
+                <td>  </td>
                 <td> Total </td>
-                <td> {{total[0]}}</td>
+                <td> {{total}}</td>
+                <td>  </td>
             </tr>
         </tbody>
     </table>

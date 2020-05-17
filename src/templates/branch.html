@@ -1,11 +1,40 @@
 {% include "include_this.html" %}
 {%if branchform %}
 <form action="" method="POST">
-    <h2>Please Add Branch</h2>
-
-    {{ branchform.branchCode }}
-    {{ branchform.branchAddress(placeholder="Enter Branch Address") }}
+    <h2>Modify Branch</h2>
+    #{{ newBranchCode }}
+    {%if userAccess == 'M' %}
+        {{ branchform.branchArea(placeholder="Area Name", readonly="readonly") }}
+    {% else %}
+        {{ branchform.branchArea(placeholder="Area Name") }}
+    {% endif %}
+    {{ branchform.selBranchType }}
+    {{ branchform.branchUnitName(placeholder="Unit Name") }}
     {{ branchform.submit}}
   </form>
  {%endif%}
   <h6> {{ error }}</h6>
+
+  <h3> Branch Info </h3>
+  <table>
+      <thead>
+          {% for col in branchHead %}
+          <th> {{col}} </th>
+          {%endfor%}
+      </thead>
+      <tbody>
+      {% for rows in branchLog %}
+      <tr>
+          {%for col in rows %}
+              {%if col == '0' %}
+                  <td> Shop </td>
+              {%elif col == '1' %}
+                  <td> Stock House </td>
+              {% else %}
+                  <td> {{col}} </td>
+              {%endif%}
+          {%endfor%}
+      </tr>
+      {%endfor%}
+      </tbody>
+  </table>

@@ -3,7 +3,57 @@
         <h2 class="form-signin-heading">Sign Up</h2>
         {{ signupform.username(placeholder="User Name")}}
         {{ signupform.password(placeholder="Password") }}
-        {{ signupform.user_access }}
+        {{ signupform.userAccess(id='userAccess', onchange="makeVisible()") }}
+        {{ signupform.branchArea }}
+        {{ signupform.branchUnitName(placeholder="Branch Unit Name", id='unitName') }}
+        {{ signupform.selBranchType(id='branchType') }}
         {{ signupform.submit}}
     </form>
     <h6> {{ error }}</h6>
+
+<h3> User Info </h3>
+<table>
+  <thead>
+      {% for col in userHead %}
+      <th> {{col}} </th>
+      {%endfor%}
+  </thead>
+  <tbody>
+  {% for rows in userLog %}
+  <tr>
+      {%for col in rows %}
+          {%if col == '0' %}
+              <td> Shop </td>
+          {%elif col == '1' %}
+              <td> Stock House </td>
+              {%break%}
+          {%elif col == 'M' or col == 'O'%}
+              <td> {{col}} </td>
+              {%break%}
+          {% else %}
+              <td> {{col}} </td>
+          {%endif%}
+      {%endfor%}
+  </tr>
+  {%endfor%}
+</tbody>
+</table>
+
+<script>
+    window.onload = function() {
+      makeVisible();
+    };
+
+  function makeVisible() {
+      x = document.getElementById("branchType");
+      y = document.getElementById("unitName");
+      z = document.getElementById("userAccess");
+      x.style.display ='';
+      y.style.display ='';
+      if(z.value == 'M')
+      {
+          x.style.display='none';
+          y.style.display='none';
+      }
+  }
+</script>

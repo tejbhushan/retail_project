@@ -10,70 +10,76 @@ db = SQLAlchemy(app)
 class User(db.Model):
     __tablename__ = 'user'
     userId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    username = db.Column(db.String(20), unique=True)
-    password = db.Column(db.String(20))
-    useraccess = db.Column(db.String(10))
+    username = db.Column(db.String(20), unique=True, nullable=False)
+    password = db.Column(db.String(20), nullable=False)
+    userAccess = db.Column(db.String(1), nullable=False)
+    userBranchId = db.Column(db.Integer, db.ForeignKey('branch.branchId'), nullable=False)
     userDatetime = db.Column(db.DateTime, default=datetime.datetime.now)
 
-    def __init__(self, username, password, useraccess):
+    def __init__(self, username, password, userAccess, userBranchId):
         self.username = username
         self.password = password
-        self.useraccess = useraccess
+        self.userAccess = userAccess
+        self.userBranchId = userBranchId
 
 class Branch(db.Model):
     __tablename__ = 'branch'
     branchId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    branchCode = db.Column(db.String(5), unique=True)
-    branchAddress = db.Column(db.String(30), unique=True)
+    branchCode = db.Column(db.Integer, unique=True, nullable=False)
+    branchArea = db.Column(db.String(15), nullable=False)
+    branchShopOrStockHouse = db.Column(db.String(1))  #shop '0' stockhouse '1'
+    branchUnitName = db.Column(db.String(15))
     branchDatetime = db.Column(db.DateTime, default=datetime.datetime.now)
 
     branchItem = relationship('Item', secondary='itemBranchRel')
 
-    def __init__(self, branchCode, branchAddress):
+    def __init__(self, branchCode, branchArea, branchShopOrStockHouse, branchUnitName):
         self.branchCode = branchCode
-        self.branchAddress = branchAddress
+        self.branchArea = branchArea
+        self.branchShopOrStockHouse = branchShopOrStockHouse
+        self.branchUnitName = branchUnitName
 
 class Item(db.Model):
     __tablename__ = 'item'
     itemId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    itemName = db.Column(db.String(20), unique=True)
-    itemBarcode = db.Column(db.String(30), unique=True)
-    # itemQuantityUnit = db.Column(db.String(5))
+    itemName = db.Column(db.String(20), unique=True, nullable=False)
+    itemBarcode = db.Column(db.String(30), unique=True, nullable=False)
     itemDateTime = db.Column(db.DateTime, default=datetime.datetime.now)
 
     itemBranch = relationship('Branch', secondary='itemBranchRel')
 
-    def __init__(self, itemName, itemBarcode):#, itemQuantityUnit):
+    def __init__(self, itemName, itemBarcode):
         self.itemName = itemName
         self.itemBarcode = itemBarcode
-        # self.itemQuantityUnit = itemQuantityUnit
 
 class ItemBranchRel(db.Model):
     __tablename__ = 'itemBranchRel'
     relItemBranchId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    relItemId = db.Column(db.Integer, db.ForeignKey('item.itemId'))
-    relBranchId = db.Column(db.Integer, db.ForeignKey('branch.branchId'))
-    relItemPrice = db.Column(db.String(10))
-    relItemAvailableQuantity = db.Column(db.String(5))
-    # relItemExpiry = db.Column(db.DateTime)
+    relItemId = db.Column(db.Integer, db.ForeignKey('item.itemId'), nullable=False)
+    relBranchId = db.Column(db.Integer, db.ForeignKey('branch.branchId'), nullable=False)
+    relItemPrice = db.Column(db.String(10), nullable=False)
+    relItemAvailableQuantity = db.Column(db.String(5), nullable=False)
+    relItemExpiry = db.Column(db.DateTime, nullable=False)
+    relLastfillDateTime = db.Column(db.DateTime, nullable=False)
     relDatetime = db.Column(db.DateTime, default=datetime.datetime.now)
     db.UniqueConstraint('relItemId', 'relBranchId', 'relItemExpiry')
 
     item = relationship(Item, backref=backref('itemBranchRel', cascade='all, delete-orphan'))
     branch = relationship(Branch, backref=backref('itemBranchRel', cascade='all, delete-orphan'))
 
-    def __init__(self, relItemId, relBranchId, relItemPrice, relItemAvailableQuantity):#, relItemExpiry)):
+    def __init__(self, relItemId, relBranchId, relItemPrice, relItemAvailableQuantity, relItemExpiry, relLastfillDateTime):
         self.relItemId = relItemId
         self.relBranchId = relBranchId
         self.relItemPrice = relItemPrice
         self.relItemPrice = relItemPrice
         self.relItemAvailableQuantity = relItemAvailableQuantity
-        # self.relItemExpiry = relItemExpiry
+        self.relItemExpiry = relItemExpiry
+        self.relLastfillDateTime = relLastfillDateTime
 
 class Customer(db.Model):
     __tablename__ = 'customer'
     customerId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    customerName = db.Column(db.String(20), unique=True)
+    customerName = db.Column(db.String(20), unique=True, nullable=False)
     customerMobile = db.Column(db.String(15))
     customerDatetime = db.Column(db.DateTime, default=datetime.datetime.now)
 
@@ -84,32 +90,45 @@ class Customer(db.Model):
 class Bill(db.Model):
     __tablename__ = 'bill'
     billId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    billUserId = db.Column(db.Integer, db.ForeignKey('user.userId'))
-    billBranchId = db.Column(db.Integer, db.ForeignKey('branch.branchId'))
-    billCustomerId = db.Column(db.Integer, db.ForeignKey('customer.customerId'))
-    billList = db.Column(db.String(100))
-    billAmount = db.Column(db.String(5))
+    billUserId = db.Column(db.Integer, db.ForeignKey('user.userId'), nullable=False)
+    billBranchId = db.Column(db.Integer, db.ForeignKey('branch.branchId'), nullable=False)
+    billCustomerId = db.Column(db.Integer, db.ForeignKey('customer.customerId'), nullable=False)
+    billQuantity = db.Column(db.String(3), nullable=False)
+    billAmount = db.Column(db.String(6), nullable=False)
     billDateTime = db.Column(db.DateTime, default=datetime.datetime.now)
 
     # user = relationship(User, backref=backref('bill', cascade='all, delete-orphan'))
     # branch = relationship(Branch, backref=backref('bill', cascade='all, delete-orphan'))
     # customer = relationship(Customer, backref=backref('bill', cascade='all, delete-orphan'))
 
-    def __init__(self, billUserId, billBranchId, billCustomerId, billList, billAmount):
+    def __init__(self, billUserId, billBranchId, billCustomerId, billQuantity, billAmount):
         self.billUserId = billUserId
         self.billBranchId = billBranchId
         self.billCustomerId = billCustomerId
-        self.billList = billList
+        self.billQuantity = billQuantity
         self.billAmount = billAmount
+
+class BillDetails(db.Model):
+    __tablename__ = 'billDetails'
+    billDetailsId = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    billDetailsBillId = db.Column(db.Integer, db.ForeignKey('bill.billId'), nullable=False)
+    billItemId = db.Column(db.Integer, db.ForeignKey('item.itemId'), nullable=False)
+    billItemQty = db.Column(db.Integer, nullable=False)
+
+    def __init__(self, billDetailsBillId, billItemId, billItemQty):
+        self.billDetailsBillId = billDetailsBillId
+        self.billItemId = billItemId
+        self.billItemQty = billItemQty
 
 
 # db.drop_all()
-db.create_all()
+# db.create_all()
 a = 0;
-log = User.query.filter_by(username='tej').first()
+log = User.query.first()
 if a == 0 and log is None:
-    db.session.add(User('tej', 'tej', '0'))
-    # db.session.add(Branch('1', 'mum'))
+    db.session.add(Branch('1', 'mumbai', '0', 'wellness'))
+    db.session.commit()
+    db.session.add(User('tej', 'tej', 'O', 1))
     # db.session.add(Branch('2', 'del'))
     # db.session.add(Branch('3', 'kol'))
     # db.session.add(Branch('4', 'chen'))
@@ -117,7 +136,7 @@ if a == 0 and log is None:
     # db.session.add(Item('cococola-600ml', '123332112'))
     # db.session.add(Item('cococola-2l', '12331112612'))
     # db.session.add(Item('maggi-300g', '1233111212'))
-    db.session.add(Customer('ramchai', '9768842000'))
+    db.session.add(Customer('ram', '9768842000'))
     db.session.commit()
     # barcodes = [12331112, 123332112, 12331112612, 1233111212]
     # price = [200, 50, 80, 35]

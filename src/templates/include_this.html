@@ -19,19 +19,17 @@ tr:nth-child(even) {
 </style>
 </head>
 <body>
-<h3>Welcome {{user}} to {{selBranchCode}} branch</h3>
+<h5>{{user}}@{{areaName}}-{{unitName}}</h5>
 <h6>
-    {% if user_access < '1' %}
-    <a href="{{ url_for('branch') }}">Modify Branch</a> |
-    {% endif %}
-    {%if user_access < '2' %}
-    <a href="{{ url_for('signup') }}">register user</a> |
+    {%if userAccess != 'U' %}
+        <a href="{{ url_for('branch', error='success') }}">Modify Branch</a> |
+        <a href="{{ url_for('signup', error='success') }}">register user</a> |
     {%endif%}
-    {%if user_access < '3'%}
     <a href="{{ url_for('billing') }}"> billing</a> |
-    <a href="{{ url_for('filling', error='success') }}"> Update Inventory</a> |
+    <a href="{{ url_for('updateInventory', error='success') }}"> Update Inventory</a> |
+    <a href="{{ url_for('searchInventory', error='success') }}"> Search Inventory</a> |
+    <a href="{{ url_for('sales') }}"> Total Sales </a> |
     <a href="{{ url_for('logout') }}">sign out</a> |
-    {%endif%}
 </h6>
 </body>
 </html>
