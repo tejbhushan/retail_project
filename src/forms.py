@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import TextField, TextAreaField, SubmitField, PasswordField, BooleanField, SelectField, TextField
+from wtforms import TextField, TextAreaField, SubmitField, PasswordField, BooleanField, SelectField, TextField\
+, DateField
 from wtforms.fields.html5 import EmailField
 from wtforms.validators import DataRequired, Length, Email
 from . models import Branch, User
@@ -26,7 +27,7 @@ class SignUpForm(FlaskForm):
             Branch.branchUnitName == self.branchUnitName.data.lower(), Branch.branchShopOrStockHouse\
             == self.selBranchType.data).first()
             if branchLog is None:
-                return [False, "Branch area or unit under shop or stock house does not exists"]
+                return [False, "Branch unit in the selected area does not exists"]
             else:
                 return [True, branchLog.branchId]
         elif self.userAccess.data == 'M':
@@ -41,12 +42,21 @@ class SignInForm(FlaskForm):
 
 
 class FillingForm(FlaskForm):
+    branchArea = SelectField('Branch Area', validators=[DataRequired()])
+    selBranchType = SelectField('Branch Type', choices=[('0', 'Shop'), ('1', 'Stock House')],\
+    validators= [DataRequired()])
+    branchUnitName = SelectField('Branch Name', validators=[DataRequired()])
+    addOrRemove = SelectField('Add or Remove', choices=[('0', 'Add/Update'), ('1', 'Remove')],\
+    validators= [DataRequired()])
+
     existingItemBarCode = SelectField('Existing Item Barcode')
     newItemBarCode = TextField('New Item Barcode')
-    itemName = TextField('Item Name')
+    itemName = TextField('New Item Name')
+    #add expiry date validation when adding element
+    expiryDate = DateField('Expiry Date', format='%d-%m-%Y')
     updatePrice = TextField('Updated Price')
-    itemQuantity = TextField('Item Import Quantity')
-    submit = SubmitField('Add Item')
+    itemQuantity = TextField('Add/Remove Quantity')
+    submit = SubmitField('Submit')
 
     def validate(self):
         if self.existingItemBarCode.data != '0' and self.newItemBarCode.data != '':

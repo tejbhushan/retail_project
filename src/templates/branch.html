@@ -3,7 +3,7 @@
 <form action="" method="POST">
     <h2>Modify Branch</h2>
     #{{ newBranchCode }}
-    {%if userAccess == 'M' %}
+    {%if session['userAccess'] == 'M' %}
         {{ branchform.branchArea(placeholder="Area Name", readonly="readonly") }}
     {% else %}
         {{ branchform.branchArea(placeholder="Area Name") }}

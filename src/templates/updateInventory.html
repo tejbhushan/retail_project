@@ -1,46 +1,92 @@
 {% include "include_this.html" %}
 <h6>{{error1}}</h6>
+<h2 >Update Shop</h2>
 {% if fillingform %}
-<form class="form-filling" action="" method="POST">
+<form method="POST">
+    {{fillingform.branchArea}}
+    {{fillingform.selBranchType}}
+    {{fillingform.branchUnitName}}
+    {{fillingform.addOrRemove(id='addOrRemove', onchange="makeVisible1()")}}
+    <b id='expiry1'>Expiry Date </b>{{fillingform.expiryDate(type="date", id='expiry')}}
+    <br>
     {{fillingform.existingItemBarCode(id = "existingItemBarCode", onchange="makeVisible()") }}
     {{fillingform.newItemBarCode(placeholder="New Item Bar Code", id="newItemBarCode")}}
-    {{fillingform.itemName(placeholder="Item Name ", id="itemName")}}
-    <br>
-    {{fillingform.updatePrice(placeholder=" Updated Price")}}
-    {{fillingform.itemQuantity(placeholder="Quantity Filled")}}
+    {{fillingform.itemName(placeholder="New Item Name ", id="itemName")}}
+    {{fillingform.updatePrice(placeholder=" New Price", id='updatePrice')}}
+    {{fillingform.itemQuantity(placeholder="Add/Remove Quantity")}}
     {{fillingform.submit}}
   </form>
   <h6> {{ error }}</h6>
   {% endif %}
 
-  <table>
-      <thead>
-          {% for col in available_stockHead %}
-          <th> {{col}} </th>
-          {%endfor%}
-      </thead>
-      <tbody>
-      {% for rows in available_stock %}
-      <tr>
-          {%for col in rows %}
-          <td> {{col}} </td>
-          {%endfor%}
-      </tr>
+<table>
+  <thead>
+      {% for col in available_stockHead %}
+      <th> {{col}} </th>
       {%endfor%}
-  </tbody>
-  </table>
+  </thead>
+  <tbody>
+  {% for rows in available_stock %}
+  <tr>
+      {%for col in rows %}
+      <td> {{col}} </td>
+      {%endfor%}
+  </tr>
+  {%endfor%}
+</tbody>
+</table>
 
-  <script>
-    function makeVisible() {
-        x = document.getElementById("newItemBarCode");
-        y = document.getElementById("itemName");
-        z = document.getElementById("existingItemBarCode");
-        x.style.visibility = 'visible';
-        y.style.visibility = 'visible';
-        if(z.value != 0)
-        {
-            x.style.visibility = 'hidden';
-            y.style.visibility = 'hidden';
-        }
+<script>
+function makeVisible() {
+    newItemBarCode = document.getElementById("newItemBarCode");
+    existingItemBarCode = document.getElementById("existingItemBarCode");
+
+    newItemBarCode.style.visibility = '';
+    if(existingItemBarCode.value != 0)
+    {
+        newItemBarCode.style.visibility = 'none';
     }
-  </script>
+}
+function makeVisible1() {
+    addOrRemove = document.getElementById("addOrRemove");
+    expiry = document.getElementById("expiry");
+    expiry1 = document.getElementById("expiry1");
+    newItemBarCode = document.getElementById("newItemBarCode");
+    itemName = document.getElementById("itemName");
+    updatePrice = document.getElementById("updatePrice");
+    alert("as",addOrRemove.value);
+
+    expiry.style.visibility = '';
+    expiry1.style.visibility = '';
+    newItemBarCode.style.visibility = '';
+    itemName.style.visibility = '';
+    updatePrice.style.visibility = '';
+    if(addOrRemove.value == 0)
+    {
+        expiry.style.visibility = 'none';
+        expiry1.style.visibility = 'none';
+        newItemBarCode.style.visibility = 'none';
+        itemName.style.visibility = 'none';
+        updatePrice.style.visibility = 'none';
+    }
+}
+</script>
+
+
+
+
+<!-- var someVarName = "value";
+localStorage.setItem("someVarKey", someVarName);
+
+var someVarName = localStorage.getItem("someVarKey"); -->
+
+
+<!-- // Check browser support
+if (typeof(Storage) !== "undefined") {
+  // Store
+  localStorage.setItem("lastname", "Smith");
+  // Retrieve
+  document.getElementById("result").innerHTML = localStorage.getItem("lastname");
+} else {
+  document.getElementById("result").innerHTML = "Sorry, your browser does not support Web Storage...";
+} -->

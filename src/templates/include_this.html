@@ -19,14 +19,14 @@ tr:nth-child(even) {
 </style>
 </head>
 <body>
-<h5>{{user}}@{{areaName}}-{{unitName}}</h5>
+<h5>{{session['current_user']}}@{{session['branchAreaName']}}-{{session['branchUnitName']}}</h5>
 <h6>
-    {%if userAccess != 'U' %}
+    {%if session['userAccess'] != 'U' %}
         <a href="{{ url_for('branch', error='success') }}">Modify Branch</a> |
-        <a href="{{ url_for('signup', error='success') }}">register user</a> |
+        <a href="{{ url_for('signup', error='success') }}">Modify user</a> |
     {%endif%}
     <a href="{{ url_for('billing') }}"> billing</a> |
-    <a href="{{ url_for('updateInventory', error='success') }}"> Update Inventory</a> |
+    <a href="{{ url_for('updateInventory', error='success') }}"> Update Inventory </a> |
     <a href="{{ url_for('searchInventory', error='success') }}"> Search Inventory</a> |
     <a href="{{ url_for('sales') }}"> Total Sales </a> |
     <a href="{{ url_for('logout') }}">sign out</a> |
