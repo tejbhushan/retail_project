@@ -21,7 +21,7 @@ def signin():
             branchLog = Branch.query.filter_by(branchId = userLog.userBranchId).first()
             session['branchUnitName'] = branchLog.branchUnitName if userLog.userAccess == 'U' else 'All'
             session['branchAreaName'] = 'All' if userLog.userAccess == 'O' else branchLog.branchArea
-            session['branchShopOrStockHouse'] = branchLog.branchShopOrStockHouse if userLog.userAccess == 'U' else 'All'
+            session['branchOutletOrNot'] = branchLog.branchOutletOrNot if userLog.userAccess == 'U' else 'All'
             session['branchId'] = userLog.userBranchId
             session['userAccess'] = userLog.userAccess
             session['current_user'] = userLog.username
@@ -42,18 +42,13 @@ def signup(error):
         signupform.userAccess.choices = [('M', 'Manager'), ('U', 'User')]
         signupform.branchArea.choices = [(bAN[0], bAN[0]) for bAN in db.session.query(Branch.branchArea).group_by\
         (Branch.branchArea).all()]
-        signupform.branchUnitName.choices = [(bAN[0], bAN[0]) for bAN in db.session.query(Branch.branchUnitName).\
-        group_by(Branch.branchUnitName).all()]
         userLog = db.session.query(User.userId, User.username, Branch.branchArea, User.userAccess, Branch.\
-        branchShopOrStockHouse, Branch.branchUnitName).filter(User.userBranchId == Branch.branchId).all()
-        print(userLog)
+        branchOutletOrNot, Branch.branchUnitName).filter(User.userBranchId == Branch.branchId).all()
     elif session['userAccess'] == 'M':
         signupform.userAccess.choices = [('U', 'User')]
         signupform.branchArea.choices = [(session['branchAreaName'], session['branchAreaName'])]
-        signupform.branchUnitName.choices = [(bAN[0], bAN[0]) for bAN in db.session.query(Branch.branchUnitName)\
-        .filter(Branch.branchArea == session['branchAreaName']).group_by(Branch.branchUnitName).all()]
         userLog = db.session.query(User.userId, User.username, Branch.branchArea, User.userAccess, Branch.\
-        branchShopOrStockHouse, Branch.branchUnitName).filter(User.userBranchId == Branch.branchId, \
+        branchOutletOrNot, Branch.branchUnitName).filter(User.userBranchId == Branch.branchId, \
         User.userAccess == 'U', Branch.branchArea == session['branchAreaName']).all()
 
     if request.method == 'POST':
@@ -74,8 +69,76 @@ def updateInventory(error):
     if session['user_available'] is False:
         return redirect(url_for('signin'))
 
-    available_stockHead = ['Item Barcode', 'Item Name', 'Branch Address', 'Item price', 'Item Available Quantity']
-    available_stock = [[]]
+    fillingform = FillingForm()
+    fillingform.itemQuantity.data = 0
+    fillingform.branchArea.choices = [(session['branchAreaName'], session['branchAreaName'])]
+    fillingform.branchOutletOrNot.choices = [('1', 'Shop'), ('0', 'Storage')]
+    if session['userAccess'] == 'O':
+        fillingform.branchArea.choices = [(bAN[0], bAN[0]) for bAN in db.session.query(Branch.branchArea).group_by\
+        (Branch.branchArea).all()]
+    elif session['userAccess'] == 'U':
+        fillingform.branchOutletOrNot.choices = [('1', 'Shop')] if session['branchOutletOrNot'] == '1' else [('2', 'Storage')]
+
+    fillingform.existingItemName.choices = [('0', 'Select')] + [(ibcodes, iNames) for ibcodes, iNames \
+    in db.session.query(Item.itemBarcode, Item.itemName).filter(ItemBranchRel.relItemId == Item.itemId).\
+    filter(ItemBranchRel.relBranchId == session['branchId']).all()]
+    if request.method == 'POST':
+        error = fillingform.validate_on_submit()
+        if error is not True:
+            return redirect(url_for('updateInventory', error=error))
+        else:
+            # print(fillingform.existingItemName.data, " as ", fillingform.newItemBarCode.data, " as ", fillingform.\
+            # itemName.data, " as ",fillingform.updatePrice.data, " as ", fillingform.itemQuantity.data)
+            if fillingform.existingItemName.data != '0':
+                item = Item.query.filter(Item.itemBarcode == fillingform.existingItemName.data).first()
+                itemExistInBranchInventory = ItemBranchRel.query.filter(ItemBranchRel.relItemId == item.itemId).filter\
+                (ItemBranchRel.relBranchId == session['branchId']).first()
+                if fillingform.updatePrice.data != '':
+                    itemExistInBranchInventory.relItemPrice = fillingform.updatePrice.data
+                if fillingform.itemQuantity.data != '':
+                    itemExistInBranchInventory.relItemAvailableQuantity = str(int(itemExistInBranchInventory\
+                    .relItemAvailableQuantity) + int(fillingform.itemQuantity.data))
+            else:
+                item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
+                #item table itself doesnot have, hence feed to item table first
+                if item is None:
+                    pass
+                    # db.session.add(Item(fillingform.itemName.data, fillingform.newItemBarCode.data))
+                    # db.session.commit()
+                item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
+                # db.session.add(ItemBranchRel(item.itemId, session['branchId'], fillingform.updatePrice.data,\
+                # fillingform.itemQuantity.data))
+
+            # db.session.commit()
+            return redirect(url_for('updateInventory', error='success'))
+
+
+
+    return render_template('updateInventory.html', fillingform=fillingform, error=error, session=session)
+
+
+@app.route('/searchInventory/<error>', methods=['GET', 'POST'])
+def searchInventory(error):
+    if session['user_available'] is False:
+        return redirect(url_for('signin'))
+
+    searchInventoryForm = SearchInventoryForm()
+    searchInventoryForm.branchAreaName.choices = [(bl[0], bl[0]) for bl in db.session.query(Branch.branchArea).\
+    group_by(Branch.branchArea).all()]
+    searchInventoryForm.branchUnitName.choices = [(bl[0], bl[0]) for bl in db.session.query(Branch.branchUnitName).\
+    group_by(Branch.branchUnitName).all()]
+    searchInventoryForm.branchOutletOrNot.choices = [('1', 'Shop'), ('0', 'Storage')]
+    searchInventoryForm.itemBarcode.choices = [(bl[0], bl[0]) for bl in db.session.query(Item.itemBarcode).\
+    group_by(Item.itemBarcode).all()]
+    searchInventoryForm.itemName.choices = [(bl[0], bl[0]) for bl in db.session.query(Item.itemName).\
+    group_by(Item.itemName).all()]
+    searchInventoryForm.expiryDate.choices = [(bl[0], bl[0]) for bl in db.session.query(ItemBranchRel.relItemExpiry).\
+    group_by(ItemBranchRel.relItemExpiry).all()]
+    if request.method == 'POST':
+        pass
+
+    # available_stockHead = ['Item Barcode', 'Item Name', 'Branch Address', 'Item price', 'Item Available Quantity']
+    # available_stock = [[]]
     # if session['branchAreaName'] == 'All':
     #     available_stock = db.session.query(Item.itemBarcode, Item.itemName, \
     #     Branch.branchAddress, ItemBranchRel.relItemPrice, ItemBranchRel.relItemAvailableQuantity).\
@@ -93,66 +156,8 @@ def updateInventory(error):
     #     return render_template('updateInventory.html', user=session['current_user'], userAccess=session['userAccess'],\
     #      areaName=session['branchAreaName'], error1='For filling, sign in with specific branch', available_stockHead\
     #      =available_stockHead, available_stock=available_stock)
-    #
-    fillingform = FillingForm()
-    # fillingform.existingItemBarCode.choices = [('0', 'Select')] + [(ibcodes, iNames) for ibcodes, iNames \
-    # in db.session.query(Item.itemBarcode, Item.itemName).filter(ItemBranchRel.relItemId == Item.itemId).\
-    # filter(ItemBranchRel.relBranchId == session['branchId']).all()]
-    # if request.method == 'POST':
-    #     error = fillingform.validate_on_submit()
-    #     if error is not True:
-    #         return redirect(url_for('updateInventory', error=error))
-    #     else:
-    #         # print(fillingform.existingItemBarCode.data, " as ", fillingform.newItemBarCode.data, " as ", fillingform.\
-    #         # itemName.data, " as ",fillingform.updatePrice.data, " as ", fillingform.itemQuantity.data)
-    #         if fillingform.existingItemBarCode.data != '0':
-    #             item = Item.query.filter(Item.itemBarcode == fillingform.existingItemBarCode.data).first()
-    #             itemExistInBranchInventory = ItemBranchRel.query.filter(ItemBranchRel.relItemId == item.itemId).filter\
-    #             (ItemBranchRel.relBranchId == session['branchId']).first()
-    #             if fillingform.updatePrice.data != '':
-    #                 itemExistInBranchInventory.relItemPrice = fillingform.updatePrice.data
-    #             if fillingform.itemQuantity.data != '':
-    #                 itemExistInBranchInventory.relItemAvailableQuantity = str(int(itemExistInBranchInventory\
-    #                 .relItemAvailableQuantity) + int(fillingform.itemQuantity.data))
-    #         else:
-    #             item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
-    #             #item table itself doesnot have, hence feed to item table first
-    #             if item is None:
-    #                 db.session.add(Item(fillingform.itemName.data, fillingform.newItemBarCode.data))
-    #                 db.session.commit()
-    #             item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
-    #             db.session.add(ItemBranchRel(item.itemId, session['branchId'], fillingform.updatePrice.data,\
-    #             fillingform.itemQuantity.data))
-    #
-    #         db.session.commit()
-    #         return redirect(url_for('updateInventory', error='success'))
 
-
-
-    return render_template('updateInventory.html', fillingform=fillingform, available_stockHead=available_stockHead,\
-     available_stock=available_stock, error=error, session=session)
-
-
-@app.route('/searchInventory', methods=['GET', 'POST'])
-def searchInventory():
-    if session['user_available'] is False:
-        return redirect(url_for('signin'))
-
-    searchInventoryForm = SearchInventoryForm()
-    searchInventoryForm.branchAreaName.choices = [(bl[0], bl[0]) for bl in db.session.query(Branch.branchArea).\
-    group_by(Branch.branchArea).all()]
-    searchInventoryForm.branchUnitName.choices = [(bl[0], bl[0]) for bl in db.session.query(Branch.branchUnitName).\
-    group_by(Branch.branchUnitName).all()]
-    searchInventoryForm.shopOrStock.choices = [('0', 'Shop'), ('1', 'Stock')]
-    searchInventoryForm.itemBarcode.choices = [(bl[0], bl[0]) for bl in db.session.query(Item.itemBarcode).\
-    group_by(Item.itemBarcode).all()]
-    searchInventoryForm.itemName.choices = [(bl[0], bl[0]) for bl in db.session.query(Item.itemName).\
-    group_by(Item.itemName).all()]
-    searchInventoryForm.expiryDate.choices = [(bl[0], bl[0]) for bl in db.session.query(ItemBranchRel.relItemExpiry).\
-    group_by(ItemBranchRel.relItemExpiry).all()]
-    if request.method == 'POST':
-        pass
-    return render_template('searchInventory.html', searchInventoryForm=searchInventoryForm, session=session)
+    return render_template('searchInventory.html', searchInventoryForm=searchInventoryForm, session=session, error=error)
 
 
 @app.route('/billing', methods=['GET', 'POST'])
@@ -200,7 +205,7 @@ def billing(listItems = []):
 @app.route('/branch/<error>', methods=['GET', 'POST'])
 def branch(error):
     branchform = BranchForm()
-    branchHead = ['#', 'Area', 'Type', 'Name', 'Modify']
+    branchHead = ['#', 'Area', 'Type', 'Branch Name', 'Modify']
     if session['user_available'] is False:
         return redirect(url_for('signin'))
     if session['userAccess'] == 'U':
@@ -208,10 +213,10 @@ def branch(error):
          areaName=session['branchAreaName'], error='User cannot modify branch')
     elif session['userAccess'] == 'M':
         branchform.branchArea.data = session['branchAreaName']
-        branchLog1 = db.session.query(Branch.branchCode, Branch.branchArea, Branch.branchShopOrStockHouse,\
+        branchLog1 = db.session.query(Branch.branchCode, Branch.branchArea, Branch.branchOutletOrNot,\
         Branch.branchUnitName).filter(Branch.branchArea == session['branchAreaName']).all()
     elif session['userAccess'] == 'O':
-        branchLog1 = db.session.query(Branch.branchCode, Branch.branchArea, Branch.branchShopOrStockHouse,\
+        branchLog1 = db.session.query(Branch.branchCode, Branch.branchArea, Branch.branchOutletOrNot,\
         Branch.branchUnitName).all()
 
     newBranchCode = '1'
@@ -224,7 +229,7 @@ def branch(error):
         if error is not True:
             return redirect(url_for('branch', error=error))
         else:
-            db.session.add(Branch(newBranchCode, branchform.branchArea.data.lower(), branchform.selBranchType.data, \
+            db.session.add(Branch(newBranchCode, branchform.branchArea.data.lower(), branchform.branchOutletOrNot.data, \
             branchform.branchUnitName.data.lower()))
             db.session.commit()
             return redirect(url_for('branch', error="success"))
@@ -260,6 +265,29 @@ def logout():
     return redirect(url_for('signin'))
 
 
+
+
+
+
+
+
+
+
+
+#functions for dynamic select fields
+@app.route('/branchUnitName/<branchArea>/<branchOutletOrNot>')
+def branchUnitNameWithOutletFilter(branchArea, branchOutletOrNot):
+    if session['userAccess'] == 'U':
+        return jsonify({'branchUnitNames': [{'id': session['branchUnitName'], 'name': session['branchUnitName']}]})
+    branchUnitNames = Branch.query.filter(Branch.branchArea == branchArea, Branch.branchOutletOrNot == \
+    branchOutletOrNot).all()
+    branchUnitNameArray = []
+    for branchUnitName in branchUnitNames:
+        branchUnitNameDict = {}
+        branchUnitNameDict['id'] = branchUnitName.branchUnitName
+        branchUnitNameDict['name'] = branchUnitName.branchUnitName
+        branchUnitNameArray.append(branchUnitNameDict)
+    return jsonify({'branchUnitNames': branchUnitNameArray})
 
 
 

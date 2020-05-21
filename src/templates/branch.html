@@ -1,14 +1,14 @@
 {% include "include_this.html" %}
 {%if branchform %}
 <form action="" method="POST">
-    <h2>Modify Branch</h2>
+    <h2>Update Branch</h2>
     #{{ newBranchCode }}
     {%if session['userAccess'] == 'M' %}
         {{ branchform.branchArea(placeholder="Area Name", readonly="readonly") }}
     {% else %}
         {{ branchform.branchArea(placeholder="Area Name") }}
     {% endif %}
-    {{ branchform.selBranchType }}
+    {{ branchform.branchOutletOrNot }}
     {{ branchform.branchUnitName(placeholder="Unit Name") }}
     {{ branchform.submit}}
   </form>
@@ -26,10 +26,10 @@
       {% for rows in branchLog %}
       <tr>
           {%for col in rows %}
-              {%if col == '0' %}
+              {%if col == '1' %}
                   <td> Shop </td>
-              {%elif col == '1' %}
-                  <td> Stock House </td>
+              {%elif col == '0' %}
+                  <td> Storage </td>
               {% else %}
                   <td> {{col}} </td>
               {%endif%}

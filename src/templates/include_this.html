@@ -17,18 +17,27 @@ tr:nth-child(even) {
   background-color: #dddddd;
 }
 </style>
+
+
+<!-- <script
+  src="https://code.jquery.com/jquery-3.4.1.min.js"
+  integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+  crossorigin="anonymous"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.10/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.10/js/select2.min.js"></script> -->
+
 </head>
 <body>
-<h5>{{session['current_user']}}@{{session['branchAreaName']}}-{{session['branchUnitName']}}</h5>
+<h5> Welcome {{session['current_user']}} | Role - {{session['userAccess']}} | Area - {{session['branchAreaName']}} | Unit - {{session['branchUnitName']}}</h5>
 <h6>
     {%if session['userAccess'] != 'U' %}
-        <a href="{{ url_for('branch', error='success') }}">Modify Branch</a> |
-        <a href="{{ url_for('signup', error='success') }}">Modify user</a> |
+        <a href="{{ url_for('sales') }}"> Total Sales </a> |
+        <a href="{{ url_for('branch', error='success') }}">Branch Info</a> |
+        <a href="{{ url_for('signup', error='success') }}">User Info</a> |
     {%endif%}
     <a href="{{ url_for('billing') }}"> billing</a> |
     <a href="{{ url_for('updateInventory', error='success') }}"> Update Inventory </a> |
     <a href="{{ url_for('searchInventory', error='success') }}"> Search Inventory</a> |
-    <a href="{{ url_for('sales') }}"> Total Sales </a> |
     <a href="{{ url_for('logout') }}">sign out</a> |
 </h6>
 </body>

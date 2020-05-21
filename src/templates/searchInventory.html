@@ -3,10 +3,28 @@
     <h2>Seach Up</h2>
     {{ searchInventoryForm.branchAreaName }}
     {{ searchInventoryForm.branchUnitName }}
-    {{ searchInventoryForm.shopOrStock }}
+    {{ searchInventoryForm.branchOutletOrNot }}
     {{ searchInventoryForm.itemBarcode }}
     {{ searchInventoryForm.itemName }}
     {{ searchInventoryForm.expiryDate }}
     {{ searchInventoryForm.submit}}
 </form>
 <h6> {{ error }}</h6>
+
+<h4> Search Results </h6>
+<table>
+  <thead>
+      {% for col in available_stockHead %}
+      <th> {{col}} </th>
+      {%endfor%}
+  </thead>
+  <tbody>
+  {% for rows in available_stock %}
+  <tr>
+      {%for col in rows %}
+      <td> {{col}} </td>
+      {%endfor%}
+  </tr>
+  {%endfor%}
+</tbody>
+</table>
