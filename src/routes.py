@@ -63,58 +63,87 @@ def signup(error):
     ,userLog=userLog)
 
 
-
 @app.route('/updateInventory/<error>', methods=['GET', 'POST'])
 def updateInventory(error):
     if session['user_available'] is False:
         return redirect(url_for('signin'))
 
     fillingform = FillingForm()
-    fillingform.itemQuantity.data = 0
     fillingform.branchArea.choices = [(session['branchAreaName'], session['branchAreaName'])]
-    fillingform.branchOutletOrNot.choices = [('1', 'Shop'), ('0', 'Storage')]
     if session['userAccess'] == 'O':
         fillingform.branchArea.choices = [(bAN[0], bAN[0]) for bAN in db.session.query(Branch.branchArea).group_by\
         (Branch.branchArea).all()]
     elif session['userAccess'] == 'U':
         fillingform.branchOutletOrNot.choices = [('1', 'Shop')] if session['branchOutletOrNot'] == '1' else [('2', 'Storage')]
 
-    fillingform.existingItemName.choices = [('0', 'Select')] + [(ibcodes, iNames) for ibcodes, iNames \
-    in db.session.query(Item.itemBarcode, Item.itemName).filter(ItemBranchRel.relItemId == Item.itemId).\
-    filter(ItemBranchRel.relBranchId == session['branchId']).all()]
+    if 'setBranchArea' in session:
+        # print(session['setBranchArea'], session['setBranchOutletOrNot'], session['setBranchUnitName'], session['setAddOrRemove'])
+        branchLog = Branch.query.filter(Branch.branchArea == session['setBranchArea'], Branch.branchOutletOrNot == \
+        session['setBranchOutletOrNot'], Branch.branchUnitName == session['setBranchUnitName']).first()
+        # print(branchLog.branchId)
+        fillingform.existingItemBarcode.choices = [('0', 'Select')] + [(ibcodes, iNames) for ibcodes, iNames \
+        in db.session.query(Item.itemBarcode, Item.itemName).filter(ItemBranchRel.relItemId == Item.itemId, \
+        ItemBranchRel.relBranchId == branchLog.branchId).group_by(ItemBranchRel.relItemId).all()]
+
     if request.method == 'POST':
-        error = fillingform.validate_on_submit()
-        if error is not True:
-            return redirect(url_for('updateInventory', error=error))
-        else:
-            # print(fillingform.existingItemName.data, " as ", fillingform.newItemBarCode.data, " as ", fillingform.\
-            # itemName.data, " as ",fillingform.updatePrice.data, " as ", fillingform.itemQuantity.data)
-            if fillingform.existingItemName.data != '0':
-                item = Item.query.filter(Item.itemBarcode == fillingform.existingItemName.data).first()
-                itemExistInBranchInventory = ItemBranchRel.query.filter(ItemBranchRel.relItemId == item.itemId).filter\
-                (ItemBranchRel.relBranchId == session['branchId']).first()
-                if fillingform.updatePrice.data != '':
-                    itemExistInBranchInventory.relItemPrice = fillingform.updatePrice.data
-                if fillingform.itemQuantity.data != '':
-                    itemExistInBranchInventory.relItemAvailableQuantity = str(int(itemExistInBranchInventory\
-                    .relItemAvailableQuantity) + int(fillingform.itemQuantity.data))
+        if fillingform.locationCheck.data:
+            session['setBranchArea'] = request.form['branchArea']
+            session['setBranchOutletOrNot'] = request.form['branchOutletOrNot']
+            session['setBranchUnitName'] = request.form['branchUnitName']
+            session['setAddOrRemove'] = request.form['addOrRemove']
+            return redirect(url_for('updateInventory', error='Parameters Fix'))
+        elif fillingform.submit.data:
+            error = fillingform.validate_on_submit()
+            if error is not True:
+                return redirect(url_for('updateInventory', error=error))
             else:
-                item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
-                #item table itself doesnot have, hence feed to item table first
-                if item is None:
-                    pass
-                    # db.session.add(Item(fillingform.itemName.data, fillingform.newItemBarCode.data))
-                    # db.session.commit()
-                item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
-                # db.session.add(ItemBranchRel(item.itemId, session['branchId'], fillingform.updatePrice.data,\
-                # fillingform.itemQuantity.data))
+                if fillingform.existingItemBarcode.data != '0':
+                    if fillingform.expiryDateSel.data == 'null':
+                        fillingform.expiryDateSel.data = None
+                    item = Item.query.filter(Item.itemBarcode == fillingform.existingItemBarcode.data).first()
+                    itemExistInBranchInventory = ItemBranchRel.query.filter(ItemBranchRel.relItemId == item.itemId, ItemBranchRel.\
+                    relBranchId == branchLog.branchId, ItemBranchRel.relItemExpiry == fillingform.expiryDateSel.data).first()
+                    if fillingform.updatePrice.data != '':
+                        itemExistInBranchInventory.relItemPrice = fillingform.updatePrice.data
+                    if fillingform.itemName.data != '':
+                        item.itemName = fillingform.itemName.data.lower()
+                    if fillingform.itemGST.data != '':
+                        item.itemGST = fillingform.itemGST.data
+                    if fillingform.itemQuantity.data != '':
+                        if fillingform.addOrRemove.data == '0':
+                            itemExistInBranchInventory.relItemAvailableQuantity = str(int(itemExistInBranchInventory\
+                            .relItemAvailableQuantity) + int(fillingform.itemQuantity.data))
+                        elif int(itemExistInBranchInventory.relItemAvailableQuantity) > int(fillingform.itemQuantity.data):
+                            itemExistInBranchInventory.relItemAvailableQuantity = str(int(itemExistInBranchInventory\
+                            .relItemAvailableQuantity) - int(fillingform.itemQuantity.data))
+                        else:
+                            return redirect(url_for('updateInventory', error='available quantity is less than removing quantity'))
+                    itemExistInBranchInventory.relLastfillDateTime = datetime.datetime.now().strftime('%Y-%m-%d')
+                else:
+                    if fillingform.expiryDate.data == '':
+                        fillingform.expiryDate.data = None
+                    item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
+                    #item table itself doesnot have, hence feed to item table first
+                    if item is None:
+                        db.session.add(Item(fillingform.itemName.data.lower(), fillingform.itemGST.data, fillingform.newItemBarCode.data))
+                        db.session.commit()
+                        item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
+                    db.session.add(ItemBranchRel(item.itemId, branchLog.branchId, fillingform.updatePrice.data,\
+                    fillingform.itemQuantity.data, fillingform.expiryDate.data, datetime.datetime.now().strftime('%Y-%m-%d')))
+                db.session.commit()
+                return redirect(url_for('updateInventory', error='success'))
 
-            # db.session.commit()
-            return redirect(url_for('updateInventory', error='success'))
+    available_stockHead = ['Item Barcode', 'Item Name', 'Item GST', 'Item price', 'Item Expiry', 'Item Available Quantity']
+    available_stock = None
+    if 'setBranchArea' in session:
+        available_stock = db.session.query(Item.itemBarcode, Item.itemName, Item.itemGST, ItemBranchRel.relItemPrice, ItemBranchRel.relItemExpiry,\
+        ItemBranchRel.relItemAvailableQuantity).filter(ItemBranchRel.relItemId == Item.itemId, ItemBranchRel.relBranchId == \
+        branchLog.branchId).group_by(ItemBranchRel.relItemId, ItemBranchRel.relItemExpiry).all()
+    # print(available_stock)
 
 
-
-    return render_template('updateInventory.html', fillingform=fillingform, error=error, session=session)
+    return render_template('updateInventory.html', fillingform=fillingform, error=error, session=session, available_stockHead=available_stockHead,\
+    available_stock=available_stock)
 
 
 @app.route('/searchInventory/<error>', methods=['GET', 'POST'])
@@ -288,6 +317,22 @@ def branchUnitNameWithOutletFilter(branchArea, branchOutletOrNot):
         branchUnitNameDict['name'] = branchUnitName.branchUnitName
         branchUnitNameArray.append(branchUnitNameDict)
     return jsonify({'branchUnitNames': branchUnitNameArray})
+
+#function to get expiryDate of an item dynamically
+@app.route('/expiryDate/<itemBarcode>')
+def expiryDate(itemBarcode):
+    branchLog = Branch.query.filter(Branch.branchArea == session['setBranchArea'], Branch.branchOutletOrNot == \
+    session['setBranchOutletOrNot'], Branch.branchUnitName == session['setBranchUnitName']).first()
+    expiryDates = db.session.query(ItemBranchRel.relItemExpiry).filter(ItemBranchRel.relBranchId == branchLog.branchId,\
+    ItemBranchRel.relItemId == Item.itemId, Item.itemBarcode == itemBarcode).group_by(ItemBranchRel.relItemExpiry).all()
+    print(expiryDates)
+    expiryDatesArray = []
+    for expiryDate in expiryDates:
+        expiryDateDict = {}
+        expiryDateDict['id'] = expiryDate[0].strftime('%Y-%m-%d') if expiryDate[0] else expiryDate[0]
+        expiryDateDict['name'] = expiryDate[0].strftime('%Y-%m-%d') if expiryDate[0] else expiryDate[0]
+        expiryDatesArray.append(expiryDateDict)
+    return jsonify({'expiryDates': expiryDatesArray})
 
 
 

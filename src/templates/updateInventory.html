@@ -5,23 +5,46 @@
     {{fillingform.branchOutletOrNot(id='branchOutletOrNot', onchange="getBranchUnitNames()")}}
     {{fillingform.branchUnitName(id='branchUnitName')}}
     {{fillingform.addOrRemove(id='addOrRemove', onchange="makeVisible()")}}
-    {{fillingform.expiryDate(placeholder='Expiry Date dd/mm/yyyy', id='expiry')}}
-    {{fillingform.removeReason(placeholder="Reason", id='removeReason')}}
-    <br>
-    {{fillingform.existingItemName(id = "existingItemName", onchange="makeVisible()") }}
+    {{fillingform.locationCheck(onclick='setDefaults()')}}
+    <h6>Note - Click on Lock Parameters before begninning </h6>
+    {{fillingform.existingItemBarcode(id = "existingItemBarcode", onchange="makeVisible()") }}
     {{fillingform.newItemBarCode(placeholder="New Item Bar Code", id="newItemBarCode")}}
     {{fillingform.itemName(placeholder="Update Item Name ", id="itemName")}}
     {{fillingform.updatePrice(placeholder=" Update Price", id='updatePrice')}}
+    {{fillingform.itemGST(placeholder="Item GST", id="itemGST")}}
     <b> Quantity </b>{{fillingform.itemQuantity(placeholder="Add/Remove Quantity")}}
-    {{fillingform.submit(id='submit', onclick="setDefaults()")}}
+    {{fillingform.expiryDateSel(id='expirySel')}}
+    {{fillingform.expiryDate(placeholder='Expiry Date yyyy-mm-dd', id='expiry')}}
+    {{fillingform.removeReason(placeholder="Reason", id='removeReason')}}
+    {{fillingform.submit}}
 </form>
 <h6> {{ error }}</h6>
+<h3>Recents</h3>
+{%if available_stock %}
+<table>
+  <thead>
+      {% for col in available_stockHead %}
+      <th> {{col}} </th>
+      {%endfor%}
+  </thead>
+  <tbody>
+  {% for rows in available_stock %}
+  <tr>
+      {%for col in rows %}
+      <td> {{col}} </td>
+      {%endfor%}
+  </tr>
+  {%endfor%}
+</tbody>
+</table>
+{%endif%}
 
 <script>
 window.onload = function init() {
     if(localStorage.getItem('branchArea'))
     {
-        document.getElementById("branchArea").options[localStorage.getItem('branchArea')].selected = true;
+        // document.getElementById("branchArea").options[localStorage.getItem('branchArea')].selected = true;
+        document.getElementById("branchArea").selectedIndex = localStorage.getItem('branchArea');
     }
     if(localStorage.getItem('branchOutletOrNot'))
     {
@@ -31,52 +54,55 @@ window.onload = function init() {
     {
         document.getElementById("addOrRemove").options[localStorage.getItem('addOrRemove')].selected = true;
     }
+    document.getElementById('removeReason').value = 'Expiry reason';
     makeVisible();
     getBranchUnitNames();
 }
 
 function setDefaults(){
-    let x = document.getElementById("branchArea");
-    let y = document.getElementById("branchOutletOrNot");
-    let z = document.getElementById("branchUnitName");
-    let a = document.getElementById("addOrRemove");
-
-    localStorage.setItem("branchArea", x.selectedIndex);
-    localStorage.setItem("branchOutletOrNot", y.selectedIndex);
-    localStorage.setItem("branchUnitName", z.selectedIndex);
-    localStorage.setItem("addOrRemove", a.selectedIndex);
+    localStorage.setItem("branchArea", document.getElementById("branchArea").selectedIndex);
+    localStorage.setItem("branchOutletOrNot", document.getElementById("branchOutletOrNot").selectedIndex);
+    localStorage.setItem("branchUnitName", document.getElementById("branchUnitName").selectedIndex);
+    localStorage.setItem("addOrRemove", document.getElementById("addOrRemove").selectedIndex);
 }
 
 function makeVisible() {
     newItemBarCode = document.getElementById("newItemBarCode");
-    existingItemName = document.getElementById("existingItemName");
+    existingItemBarcode = document.getElementById("existingItemBarcode");
     addOrRemove = document.getElementById("addOrRemove");
     expiry = document.getElementById("expiry");
+    itemGST = document.getElementById("itemGST");
+    expirySel = document.getElementById("expirySel");
     itemName = document.getElementById("itemName");
     updatePrice = document.getElementById("updatePrice");
     removeReason = document.getElementById("removeReason");
 
     removeReason.style.display = 'none';
-    removeReason.value = 'Expiry';
     expiry.style.display = '';
+    expirySel.style.display = '';
     itemName.style.display = '';
+    itemGST.style.display = '';
     updatePrice.style.display = '';
     newItemBarCode.style.display = '';
 
-    if(existingItemName.value != 0) {
+    if(existingItemBarcode.value != 0) {
         newItemBarCode.style.display = 'none';
+        expiry.style.display = 'none';
     }
     else {
+        expirySel.style.display = 'none';
         newItemBarCode.style.display = '';
+        expiry.style.display = '';
     }
     if(addOrRemove.value == 1) {
         removeReason.style.display = '';
-        removeReason.value = '';
         expiry.style.display = 'none';
         newItemBarCode.style.display = 'none';
         itemName.style.display = 'none';
         updatePrice.style.display = 'none';
+        itemGST.style.display = 'none';
     }
+    getExpiryDates();
 }
 
 
@@ -89,22 +115,45 @@ function getBranchUnitNames() {
     z.innerHTML = "";
     fetch('/branchUnitName/'+ branchArea + '/' + branchOutletOrNot).then(function(response){
        response.json().then(function(data){
-           let optionHtml = '';
            for(let branchUnitName of data.branchUnitNames) {
                var opt = document.createElement('option');
                opt.innerHTML = branchUnitName.id;
                opt.value = branchUnitName.name;
                z.appendChild(opt);
            }
-           z.options[localStorage.getItem('branchUnitName')].selected = true;
+           if(z.length > localStorage.getItem('branchUnitName'))
+           {
+               z.options[localStorage.getItem('branchUnitName')].selected = true;
+           }
+           else {
+               z.options[0].selected = true;
+           }
+       });
+    });
+}
+
+
+function getExpiryDates() {
+    let y = document.getElementById("existingItemBarcode");
+    let z = document.getElementById("expirySel");
+    existingItemBarcode = y.value;
+    z.innerHTML = "";
+    fetch('/expiryDate/'+ existingItemBarcode).then(function(response){
+       response.json().then(function(data){
+           for(let expiryDate of data.expiryDates) {
+               var opt = document.createElement('option');
+               opt.innerHTML = expiryDate.id;
+               opt.value = expiryDate.name;
+               z.appendChild(opt);
+           }
        });
     });
 }
 
 
 // $(document).ready(function() {
-//     $('#existingItemName').select2({
-//     placeholder: "{{ fillingform.existingItemName.label.text }}",
+//     $('#existingItemBarcode').select2({
+//     placeholder: "{{ fillingform.existingItemBarcode.label.text }}",
 //     allowClear: true,
 //     "width": "style"
 // });

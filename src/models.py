@@ -43,13 +43,15 @@ class Item(db.Model):
     __tablename__ = 'item'
     itemId = db.Column(db.Integer, primary_key=True, autoincrement=True)
     itemName = db.Column(db.String(20), unique=True, nullable=False)
+    itemGST = db.Column(db.String(5), nullable=False)
     itemBarcode = db.Column(db.String(30), unique=True, nullable=False)
     itemDateTime = db.Column(db.DateTime, default=datetime.datetime.now)
 
     itemBranch = relationship('Branch', secondary='itemBranchRel')
 
-    def __init__(self, itemName, itemBarcode):
+    def __init__(self, itemName, itemGST, itemBarcode):
         self.itemName = itemName
+        self.itemGST = itemGST
         self.itemBarcode = itemBarcode
 
 class ItemBranchRel(db.Model):
@@ -59,9 +61,9 @@ class ItemBranchRel(db.Model):
     relBranchId = db.Column(db.Integer, db.ForeignKey('branch.branchId'), nullable=False)
     relItemPrice = db.Column(db.String(10), nullable=False)
     relItemAvailableQuantity = db.Column(db.String(5), nullable=False)
-    relItemExpiry = db.Column(db.DateTime, nullable=True)   #ex tissues have no expiry
-    relLastfillDateTime = db.Column(db.DateTime, nullable=False)
-    relDatetime = db.Column(db.DateTime, default=datetime.datetime.now)
+    relItemExpiry = db.Column(db.Date, nullable=True)   #ex tissues have no expiry
+    relLastfillDateTime = db.Column(db.Date, nullable=False)
+    relDatetime = db.Column(db.DateTime, default=datetime.datetime.now().strftime('%Y-%m-%d'))
     db.UniqueConstraint('relItemId', 'relBranchId', 'relItemExpiry')
 
     item = relationship(Item, backref=backref('itemBranchRel', cascade='all, delete-orphan'))

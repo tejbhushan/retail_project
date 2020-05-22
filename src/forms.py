@@ -3,7 +3,7 @@ from wtforms import TextField, TextAreaField, SubmitField, PasswordField, Boolea
 , DateField
 from wtforms.fields.html5 import EmailField
 from wtforms.validators import DataRequired, Length, Email
-from . models import Branch, User
+from . models import Branch, User, Item
 
 import datetime
 
@@ -49,14 +49,17 @@ class FillingForm(FlaskForm):
     branchUnitName = SelectField('Branch Name')
     addOrRemove = SelectField('Add or Remove', choices=[('0', 'Add/Update'), ('1', 'Remove')],\
     validators= [DataRequired()])
+    locationCheck = SubmitField('Lock Parameters')
 
     # removeReason = SelectField('Reason to Remove', choices=[('0', 'Expired/Faulty'), ('1', \
     removeReason = TextField('Reason to Remove', validators=[DataRequired()])
-    existingItemName = SelectField('Existing Item Barcode')
+    existingItemBarcode = SelectField('Existing Item Barcode')
     newItemBarCode = TextField('New Item Barcode')
     itemName = TextField('New Item Name')
+    itemGST = TextField('New Item GST')
     #add expiry date validation when adding element
     expiryDate = TextField('Expiry Date')
+    expiryDateSel = SelectField('Expiry Date Selection')
     updatePrice = TextField('Updated Price')
     itemQuantity = TextField('Add/Remove Quantity')
     submit = SubmitField('Submit')
@@ -64,15 +67,23 @@ class FillingForm(FlaskForm):
     def validate(self):
         if self.expiryDate.data != '':
             try:
-                day,month,year = self.expiryDate.data.split('/')
-                datetime.datetime(int(year),int(month),int(day))
+                year, month, day = self.expiryDate.data.split('-')
+                if len(year) != 4:
+                    raise ValueError("")
+                date = datetime.datetime(int(year),int(month),int(day))
+                if datetime.datetime.now() > date:
+                    raise ValueError("")
             except ValueError :
-                return "Expiry Date not in proper format"
-        if self.existingItemName.data == '0' and self.newItemBarCode.data == '':
+                return "Expiry Date not in proper format or less than today"
+        if self.existingItemBarcode.data == '0' and self.newItemBarCode.data == '':
             return "Either do Select or fill new item barcode"
         elif self.newItemBarCode.data != '':
-            if self.itemName.data == '' or self.expiryDate.data == '' or self.updatePrice.data == '':
-                return "New Item bar code requires its item name and updated price and expiry date."
+            if self.itemName.data == '' or self.updatePrice.data == '' or self.itemGST.data == '':
+                return "New Item bar code requires its item name and updated price and Item GST"
+            if Item.query.filter(Item.itemBarcode == self.newItemBarCode.data).first():
+                return "New Item barcode entered already exists"
+        if self.addOrRemove.data == '1' and self.existingItemBarcode.data == '0':
+            return "select an item to remove"
         return True
 
 class BranchForm(FlaskForm):
