@@ -74,7 +74,7 @@ def updateInventory(error):
         fillingform.branchArea.choices = [(bAN[0], bAN[0]) for bAN in db.session.query(Branch.branchArea).group_by\
         (Branch.branchArea).all()]
     elif session['userAccess'] == 'U':
-        fillingform.branchOutletOrNot.choices = [('1', 'Shop')] if session['branchOutletOrNot'] == '1' else [('2', 'Storage')]
+        fillingform.branchOutletOrNot.choices = [('B', 'Shop')] if session['branchOutletOrNot'] == 'B' else [('N', 'Storage')]
 
     if 'setBranchArea' in session:
         # print(session['setBranchArea'], session['setBranchOutletOrNot'], session['setBranchUnitName'], session['setAddOrRemove'])
@@ -93,7 +93,7 @@ def updateInventory(error):
             session['setAddOrRemove'] = request.form['addOrRemove']
             return redirect(url_for('updateInventory', error='Parameters Fix'))
         elif fillingform.submit.data:
-            error = fillingform.validate_on_submit()
+            error = fillingform.validate(branchLog.branchId)
             if error is not True:
                 return redirect(url_for('updateInventory', error=error))
             else:
@@ -141,7 +141,6 @@ def updateInventory(error):
         branchLog.branchId).group_by(ItemBranchRel.relItemId, ItemBranchRel.relItemExpiry).all()
     # print(available_stock)
 
-
     return render_template('updateInventory.html', fillingform=fillingform, error=error, session=session, available_stockHead=available_stockHead,\
     available_stock=available_stock)
 
@@ -151,42 +150,52 @@ def searchInventory(error):
     if session['user_available'] is False:
         return redirect(url_for('signin'))
 
+    available_stockHead = ['Branch Area', 'Branch Type', 'Branch Unit Name', 'Item Barcode', 'Item Name', 'Item GST', 'Item price', 'Item Expiry'\
+    , 'Item Available Quantity']
+    available_stock = db.session.query(Branch.branchArea, Branch.branchOutletOrNot, Branch.branchUnitName, Item.itemBarcode, Item.itemName,\
+     Item.itemGST, ItemBranchRel.relItemPrice, ItemBranchRel.relItemExpiry, ItemBranchRel.relItemAvailableQuantity).filter(ItemBranchRel.relBranchId \
+     == Branch.branchId, ItemBranchRel.relItemId == Item.itemId).group_by(ItemBranchRel.relItemBranchId).all()
+
     searchInventoryForm = SearchInventoryForm()
-    searchInventoryForm.branchAreaName.choices = [(bl[0], bl[0]) for bl in db.session.query(Branch.branchArea).\
-    group_by(Branch.branchArea).all()]
-    searchInventoryForm.branchUnitName.choices = [(bl[0], bl[0]) for bl in db.session.query(Branch.branchUnitName).\
-    group_by(Branch.branchUnitName).all()]
-    searchInventoryForm.branchOutletOrNot.choices = [('1', 'Shop'), ('0', 'Storage')]
-    searchInventoryForm.itemBarcode.choices = [(bl[0], bl[0]) for bl in db.session.query(Item.itemBarcode).\
-    group_by(Item.itemBarcode).all()]
-    searchInventoryForm.itemName.choices = [(bl[0], bl[0]) for bl in db.session.query(Item.itemName).\
-    group_by(Item.itemName).all()]
-    searchInventoryForm.expiryDate.choices = [(bl[0], bl[0]) for bl in db.session.query(ItemBranchRel.relItemExpiry).\
-    group_by(ItemBranchRel.relItemExpiry).all()]
+    searchInventoryForm.branchArea.choices = [(None, 'All')] + [(branchArea[0], branchArea[0]) for branchArea in \
+    db.session.query(Branch.branchArea).group_by(Branch.branchArea).all()]
+    searchInventoryForm.branchUnitName.choices = [(None, 'All')] + [(branchUnitName[0], branchUnitName[0]) for branchUnitName in \
+    db.session.query(Branch.branchUnitName).group_by(Branch.branchUnitName).all()]
+    searchInventoryForm.itemBarcode.choices = [(None, 'All')] + [(ibcodes[0], ibcodes[0]) for ibcodes in db.session.query(Item.itemBarcode).all()]
+    searchInventoryForm.itemName.choices = [(None, 'All')] + [(iNames[0], iNames[0]) for iNames in db.session.query(Item.itemName).all()]
+
     if request.method == 'POST':
-        pass
+        # print(searchInventoryForm.branchArea.data, searchInventoryForm.branchOutletOrNot.data, searchInventoryForm.branchUnitName.data,\
+        # searchInventoryForm.itemBarcode.data, searchInventoryForm.itemName.data)
+        error = searchInventoryForm.validate()
+        if error is not True:
+            return redirect(url_for('searchInventory', error=error))
+        else:
+            available_stock = db.session.query(Branch.branchArea, Branch.branchOutletOrNot, Branch.branchUnitName, Item.itemBarcode, Item.itemName,\
+             Item.itemGST, ItemBranchRel.relItemPrice, ItemBranchRel.relItemExpiry, ItemBranchRel.relItemAvailableQuantity).filter(ItemBranchRel.\
+             relBranchId == Branch.branchId, ItemBranchRel.relItemId == Item.itemId)
+            if searchInventoryForm.branchArea.data != 'None':
+                available_stock = available_stock.filter(Branch.branchArea == searchInventoryForm.branchArea.data)
+                # print(available_stock.all())
+            if searchInventoryForm.branchOutletOrNot.data != 'None':
+                available_stock = available_stock.filter(Branch.branchOutletOrNot == searchInventoryForm.branchOutletOrNot.data)
+            if searchInventoryForm.branchUnitName.data != 'None':
+                available_stock = available_stock.filter(Branch.branchUnitName == searchInventoryForm.branchUnitName.data)
+            if searchInventoryForm.itemBarcode.data != 'None':
+                available_stock = available_stock.filter(Item.itemBarcode == searchInventoryForm.itemBarcode.data)
+            if searchInventoryForm.itemName.data != 'None':
+                available_stock = available_stock.filter(Item.itemName == searchInventoryForm.itemName.data)
+            if searchInventoryForm.expiryAfterOrBefore.data != 'None':
+                if searchInventoryForm.expiryAfterOrBefore.data == '0':#before
+                    available_stock = available_stock.filter(ItemBranchRel.relItemExpiry <= searchInventoryForm.expiryDate.data)
+                else:
+                    available_stock = available_stock.filter(ItemBranchRel.relItemExpiry > searchInventoryForm.expiryDate.data)
+            available_stock = available_stock.all()
+            # print(available_stock)
+            error = 'success'
 
-    # available_stockHead = ['Item Barcode', 'Item Name', 'Branch Address', 'Item price', 'Item Available Quantity']
-    # available_stock = [[]]
-    # if session['branchAreaName'] == 'All':
-    #     available_stock = db.session.query(Item.itemBarcode, Item.itemName, \
-    #     Branch.branchAddress, ItemBranchRel.relItemPrice, ItemBranchRel.relItemAvailableQuantity).\
-    #     filter(ItemBranchRel.relItemId == Item.itemId).filter(ItemBranchRel.relBranchId == Branch.branchId)\
-    #     .group_by(ItemBranchRel.relBranchId, ItemBranchRel.relItemBranchId).all()
-    # else:
-    #     available_stock = db.session.query(Item.itemBarcode, Item.itemName, Branch.branchAddress\
-    #     , ItemBranchRel.relItemPrice, ItemBranchRel.relItemAvailableQuantity).\
-    #     filter(ItemBranchRel.relItemId == Item.itemId).filter(ItemBranchRel.relBranchId == Branch.branchId)\
-    #     .filter(ItemBranchRel.relBranchId == session['branchId']).\
-    #     group_by(ItemBranchRel.relBranchId, ItemBranchRel.relItemBranchId).all()
-    #
-    #
-    # if session['branchAreaName'] == 'All':
-    #     return render_template('updateInventory.html', user=session['current_user'], userAccess=session['userAccess'],\
-    #      areaName=session['branchAreaName'], error1='For filling, sign in with specific branch', available_stockHead\
-    #      =available_stockHead, available_stock=available_stock)
-
-    return render_template('searchInventory.html', searchInventoryForm=searchInventoryForm, session=session, error=error)
+    return render_template('searchInventory.html', searchInventoryForm=searchInventoryForm, session=session, error=error, available_stockHead=\
+    available_stockHead, available_stock=available_stock)
 
 
 @app.route('/billing', methods=['GET', 'POST'])
@@ -325,7 +334,7 @@ def expiryDate(itemBarcode):
     session['setBranchOutletOrNot'], Branch.branchUnitName == session['setBranchUnitName']).first()
     expiryDates = db.session.query(ItemBranchRel.relItemExpiry).filter(ItemBranchRel.relBranchId == branchLog.branchId,\
     ItemBranchRel.relItemId == Item.itemId, Item.itemBarcode == itemBarcode).group_by(ItemBranchRel.relItemExpiry).all()
-    print(expiryDates)
+    # print(expiryDates)
     expiryDatesArray = []
     for expiryDate in expiryDates:
         expiryDateDict = {}

@@ -27,10 +27,11 @@ class Branch(db.Model):
     branchId = db.Column(db.Integer, primary_key=True, autoincrement=True)
     branchCode = db.Column(db.Integer, unique=True, nullable=False)
     branchArea = db.Column(db.String(15), nullable=False)
-    branchOutletOrNot = db.Column(db.String(1))  #Outlet '1' Not '0'
+    branchOutletOrNot = db.Column(db.String(1))  #Outlet 'B' branch outlet Not 'N' Non branch outlet
     branchUnitName = db.Column(db.String(15))
     branchDatetime = db.Column(db.DateTime, default=datetime.datetime.now)
 
+    db.UniqueConstraint('branchArea', 'branchOutletOrNot', 'branchUnitName')
     branchItem = relationship('Item', secondary='itemBranchRel')
 
     def __init__(self, branchCode, branchArea, branchOutletOrNot, branchUnitName):
@@ -128,7 +129,7 @@ class BillDetails(db.Model):
 a = 0;
 log = User.query.first()
 if a == 0 and log is None:
-    db.session.add(Branch('1', 'mumbai', '1', 'wellness'))
+    db.session.add(Branch('1', 'mumbai', 'B', 'wellness'))
     db.session.commit()
     db.session.add(User('tej', 'tej', 'O', 1))
     # db.session.add(Branch('2', 'del'))

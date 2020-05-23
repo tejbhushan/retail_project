@@ -22,9 +22,9 @@
   {% for rows in userLog %}
   <tr>
       {%for col in rows %}
-          {%if col == '1' %}
+          {%if col == 'B' %}
               <td> Shop </td>
-          {%elif col == '0' %}
+          {%elif col == 'N' %}
               <td> Storage </td>
           {%elif col == 'M' or col == 'O'%}
               <td> {{col}} </td>

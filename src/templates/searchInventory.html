@@ -1,12 +1,14 @@
 {% include "include_this.html" %}
 <form method="POST">
-    <h2>Seach Up</h2>
-    {{ searchInventoryForm.branchAreaName }}
-    {{ searchInventoryForm.branchUnitName }}
-    {{ searchInventoryForm.branchOutletOrNot }}
-    {{ searchInventoryForm.itemBarcode }}
-    {{ searchInventoryForm.itemName }}
-    {{ searchInventoryForm.expiryDate }}
+    <h2>Search Up</h2>
+    <b>Branch Area</b>{{ searchInventoryForm.branchArea }}
+    <b>Branch Type</b>{{ searchInventoryForm.branchOutletOrNot }}
+    <b>Branch Name</b>{{ searchInventoryForm.branchUnitName }}
+    <br>
+    <b id='itemBarcodeText'>Barcode</b>{{ searchInventoryForm.itemBarcode(id='itemBarcode', onchange='makeVisible()') }}
+    <b id='itemNameText'>Name</b>{{ searchInventoryForm.itemName(id='itemName', onchange='makeVisible()') }}
+    <b>Expiry Type</b>{{ searchInventoryForm.expiryAfterOrBefore(id='expiryAfterOrBefore', onchange='makeVisible()') }}
+    {{ searchInventoryForm.expiryDate(placeholder='Expiry Date yyyy-mm-dd', id='expiryDate') }}
     {{ searchInventoryForm.submit}}
 </form>
 <h6> {{ error }}</h6>
@@ -18,13 +20,61 @@
       <th> {{col}} </th>
       {%endfor%}
   </thead>
+  {%if available_stock %}
   <tbody>
   {% for rows in available_stock %}
   <tr>
       {%for col in rows %}
-      <td> {{col}} </td>
+          {%if col == 'B' %}
+              <td> Shop </td>
+          {%elif col == 'N' %}
+              <td> Storage </td>
+          {% else %}
+              <td> {{col}} </td>
+          {%endif%}
       {%endfor%}
   </tr>
   {%endfor%}
 </tbody>
+{%endif%}
 </table>
+
+
+<script>
+window.onload = function init() {
+    expiryDate.style.display = 'none';
+    expiryAfterOrBefore = document.getElementById("expiryAfterOrBefore");
+    expiryDate = document.getElementById("expiryDate");
+    if(expiryAfterOrBefore.value != 'None')
+    {
+        expiryDate.style.display = '';
+    }
+}
+function makeVisible(){
+    itemBarcode = document.getElementById("itemBarcode");
+    itemBarcodeText = document.getElementById("itemBarcodeText");
+    itemName = document.getElementById("itemName");
+    itemNameText = document.getElementById("itemNameText");
+    itemBarcode.style.display = '';
+    itemBarcodeText.style.display = '';
+    itemName.style.display = '';
+    itemNameText.style.display = '';
+
+    if(itemBarcode.value != 'None') {
+        itemNameText.style.display = 'none';
+        itemName.style.display = 'none';
+    }
+    if(itemName.value != 'None') {
+        itemBarcodeText.style.display = 'none';
+        itemBarcode.style.display = 'none';
+    }
+    expiryAfterOrBefore = document.getElementById("expiryAfterOrBefore");
+    expiryDate = document.getElementById("expiryDate");
+    expiryDate.style.display = 'none';
+    if(expiryAfterOrBefore.value != 'None')
+    {
+        expiryDate.style.display = '';
+    }
+
+}
+</script>

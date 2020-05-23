@@ -3,7 +3,7 @@ from wtforms import TextField, TextAreaField, SubmitField, PasswordField, Boolea
 , DateField
 from wtforms.fields.html5 import EmailField
 from wtforms.validators import DataRequired, Length, Email
-from . models import Branch, User, Item
+from . models import Branch, User, Item, ItemBranchRel, db
 
 import datetime
 
@@ -14,7 +14,7 @@ class SignUpForm(FlaskForm):
     # user_active = BooleanField('User Active', validators=[ DataRequired()])
     userAccess = SelectField('User Access', validators= [DataRequired()])
     branchArea = SelectField('Branch Area', validators=[DataRequired()])
-    branchOutletOrNot = SelectField('Branch Type', choices=[('1', 'Shop'), ('0', 'Storage')],\
+    branchOutletOrNot = SelectField('Branch Type', choices=[('B', 'Shop'), ('N', 'Storage')],\
     validators= [DataRequired()])
     branchUnitName = SelectField('Branch Unit')
     # user_mobile = TextField('User Mobile', validators= [ DataRequired()])
@@ -44,7 +44,7 @@ class SignInForm(FlaskForm):
 
 class FillingForm(FlaskForm):
     branchArea = SelectField('Branch Area', validators=[DataRequired()])
-    branchOutletOrNot = SelectField('Branch Type', choices=[('1', 'Shop'), ('0', 'Storage')],\
+    branchOutletOrNot = SelectField('Branch Type', choices=[('B', 'Shop'), ('N', 'Storage')],\
     validators= [DataRequired()])
     branchUnitName = SelectField('Branch Name')
     addOrRemove = SelectField('Add or Remove', choices=[('0', 'Add/Update'), ('1', 'Remove')],\
@@ -64,7 +64,7 @@ class FillingForm(FlaskForm):
     itemQuantity = TextField('Add/Remove Quantity')
     submit = SubmitField('Submit')
 
-    def validate(self):
+    def validate(self, branchId):
         if self.expiryDate.data != '':
             try:
                 year, month, day = self.expiryDate.data.split('-')
@@ -75,20 +75,25 @@ class FillingForm(FlaskForm):
                     raise ValueError("")
             except ValueError :
                 return "Expiry Date not in proper format or less than today"
+            expiryDate = self.expiryDate.data
+        else:
+            expiryDate = None
         if self.existingItemBarcode.data == '0' and self.newItemBarCode.data == '':
             return "Either do Select or fill new item barcode"
         elif self.newItemBarCode.data != '':
             if self.itemName.data == '' or self.updatePrice.data == '' or self.itemGST.data == '':
                 return "New Item bar code requires its item name and updated price and Item GST"
-            if Item.query.filter(Item.itemBarcode == self.newItemBarCode.data).first():
-                return "New Item barcode entered already exists"
+            itemBranchEntry = db.session.query(ItemBranchRel.relItemBranchId).filter(ItemBranchRel.relItemExpiry\
+            == expiryDate, Item.itemBarcode == self.newItemBarCode.data, ItemBranchRel.relBranchId == branchId).first()
+            if itemBranchEntry:
+                return "New Item barcode entered already exists with same expiry date, Use select option"
         if self.addOrRemove.data == '1' and self.existingItemBarcode.data == '0':
             return "select an item to remove"
         return True
 
 class BranchForm(FlaskForm):
     branchArea = TextField('Branch Area', validators=[DataRequired()])
-    branchOutletOrNot = SelectField('Branch Type', choices=[('1', 'Shop'), ('0', 'Storage')],\
+    branchOutletOrNot = SelectField('Branch Type', choices=[('B', 'Shop'), ('N', 'Storage')],\
     validators= [DataRequired()])
     branchUnitName = TextField('Branch Name', validators=[DataRequired()])
     submit = SubmitField('Add Branch')
@@ -110,11 +115,28 @@ class BillForm(FlaskForm):
 
 
 class SearchInventoryForm(FlaskForm):
-    branchAreaName = SelectField('Area Name')
+    branchArea = SelectField('Area Name')
+    branchOutletOrNot = SelectField('Branch Type', choices=[(None, 'All'), ('B', 'Shop'), ('N', 'Storage')])
     branchUnitName = SelectField('Unit Name')
+
     itemBarcode = SelectField('Item Barcode')
     itemName = SelectField('Item Name')
-    expiryDate = SelectField('Expiry Date')
-    branchOutletOrNot = SelectField('Branch Type', choices=[('1', 'Shop'), ('0', 'Storage')],\
-    validators= [DataRequired()])
+    expiryAfterOrBefore = SelectField('Expiry After or Before', choices=[(None, 'All'), ('0', 'Before'), ('1', 'After')])
+    expiryDate = TextField('Expiry Date')
     submit = SubmitField('Search Inventory')
+
+    def validate(self):
+        if self.itemBarcode.data != 'None' and self.itemName.data != 'None':
+            return 'both Barcode and Name can not be selected at once'
+        if self.expiryAfterOrBefore.data != 'None':
+            if self.expiryDate.data == '':
+                return "enter expiry date if before or After is selected"
+            else:
+                try:
+                    year, month, day = self.expiryDate.data.split('-')
+                    if len(year) != 4:
+                        raise ValueError("")
+                    datetime.datetime(int(year),int(month),int(day))
+                except ValueError :
+                    return "Expiry Date not in proper format"
+        return True
