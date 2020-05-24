@@ -54,7 +54,7 @@ class FillingForm(FlaskForm):
     # removeReason = SelectField('Reason to Remove', choices=[('0', 'Expired/Faulty'), ('1', \
     removeReason = TextField('Reason to Remove', validators=[DataRequired()])
     existingItemBarcode = SelectField('Existing Item Barcode')
-    newItemBarCode = TextField('New Item Barcode')
+    newItemBarcode = TextField('New Item Barcode')
     itemName = TextField('New Item Name')
     itemGST = TextField('New Item GST')
     #add expiry date validation when adding element
@@ -78,15 +78,22 @@ class FillingForm(FlaskForm):
             expiryDate = self.expiryDate.data
         else:
             expiryDate = None
-        if self.existingItemBarcode.data == '0' and self.newItemBarCode.data == '':
+        if self.existingItemBarcode.data == '0' and self.newItemBarcode.data == '':
             return "Either do Select or fill new item barcode"
-        elif self.newItemBarCode.data != '':
+        elif self.newItemBarcode.data != '':
             if self.itemName.data == '' or self.updatePrice.data == '' or self.itemGST.data == '':
                 return "New Item bar code requires its item name and updated price and Item GST"
             itemBranchEntry = db.session.query(ItemBranchRel.relItemBranchId).filter(ItemBranchRel.relItemExpiry\
-            == expiryDate, Item.itemBarcode == self.newItemBarCode.data, ItemBranchRel.relBranchId == branchId).first()
+            == expiryDate, Item.itemBarcode == self.newItemBarcode.data, ItemBranchRel.relBranchId == branchId).first()
             if itemBranchEntry:
                 return "New Item barcode entered already exists with same expiry date, Use select option"
+            item = Item.query.filter(Item.itemBarcode == self.newItemBarcode.data).first()
+            if item:
+                itemDetails = ItemBranchRel.query.filter(ItemBranchRel.relItemId == item.itemId, ItemBranchRel.\
+                relBranchId == branchId).first()
+                #this is because while billing if two different prices for same item handling is difficult
+                if itemDetails and (itemDetails.relItemPrice != self.updatePrice.data or item.itemGST != self.itemGST.data):
+                    return "New Item barcode entered has to be of same price or gst as existing"
         if self.addOrRemove.data == '1' and self.existingItemBarcode.data == '0':
             return "select an item to remove"
         return True
@@ -107,11 +114,28 @@ class BranchForm(FlaskForm):
 
 
 class BillForm(FlaskForm):
-    customerName = TextField('Customer Name', validators=[DataRequired()])
-    itemBarcode = SelectField('Item Barcode ',validators=[DataRequired()])
-    itemQuantity = TextField('Item Quantity', validators=[DataRequired()])
-    next = SubmitField('Proceed')
+    customerName = TextField('Customer Name')
+    itemBarcode = SelectField('Item Barcode')
+    itemName = SelectField('Item Name')
+    itemQuantity = TextField('Item Quantity')
+    next = SubmitField('Next')
     submit = SubmitField('Bill')
+
+    def validate(self):
+        if self.itemQuantity.data == '':
+            return "enter quantity"
+        if self.itemName.data == 'None' and self.itemBarcode.data == 'None':
+            return "please select item by name or barcode"
+        return 'success'
+
+
+class BillDetailsForm(FlaskForm):
+    itemBarcode = TextField('Item Barcode')
+    itemName = TextField('Item Name')
+    itemPrice = TextField('Item Price')
+    itemQuantity = TextField('Item Quantity')
+    itemGST = TextField('Item GST')
+    itemTotalPrice = TextField('Item Total Price')
 
 
 class SearchInventoryForm(FlaskForm):

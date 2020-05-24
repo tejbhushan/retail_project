@@ -35,7 +35,7 @@ tr:nth-child(even) {
         <a href="{{ url_for('branch', error='success') }}">Branch Info</a> |
         <a href="{{ url_for('signup', error='success') }}">User Info</a> |
     {%endif%}
-    <a href="{{ url_for('billing') }}"> billing</a> |
+    <a href="{{ url_for('billing', error='success') }}"> billing</a> |
     <a href="{{ url_for('updateInventory', error='success') }}"> Update Inventory </a> |
     <a href="{{ url_for('searchInventory', error='success') }}"> Search Inventory</a> |
     <a href="{{ url_for('logout') }}">sign out</a> |

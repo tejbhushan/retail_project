@@ -2,9 +2,10 @@
 <h6>{{error}}</h6>
 {%if billform %}
 <form method='POST'>
-    Customer Name : {{billform.customerName(placeholder="Customer Name")}}
-    Barcode : {{billform.itemBarcode(placeholder="Item Barcode")}}
-    Quantity : {{billform.itemQuantity(placeholder="Item Quantity")}}
+    {{billform.customerName(placeholder="Customer Name")}}
+    <b id='itemBarcodeText'>Barcode</b>{{billform.itemBarcode(placeholder="Item Barcode", id='itemBarcode', onchange='makeVisible()')}}
+    <b id='itemNameText'>Name</b>{{billform.itemName(placeholder="Item Name", id='itemName', onchange='makeVisible()')}}
+    {{billform.itemQuantity(placeholder="Item Quantity")}}
     {{billform.next}}
     {{billform.submit}}
     <table>
@@ -13,23 +14,82 @@
             <th>Item Name </th>
             <th>Item Price (1 Qty)</th>
             <th> Item Quantity</th>
-            <th> Item Expiry Date</th>
+            <th> Item GST </th>
             <th> Item Total Price</th>
         </thead>
         <tbody>
-            {%for list in listItems %}
+            {%for list in billDetailList %}
             <tr>
-                {% for i in list[:-1] %}
-                    <td>{{i}}</td>
-                {%endfor%}
-            <tr>
-            {%endfor%}
-                <td>  </td>
-                <td> Total </td>
-                <td> {{total}}</td>
-                <td>  </td>
+                <td> {{list[1].itemBarcode.data }}</td>
+                <td> {{list[1].itemName.data }}</td>
+                <td> {{list[1].itemPrice.data }}</td>
+                <td> {{list[1].itemQuantity(id=list[0], onkeyup='qtyChanged(this.id)') }}</td>
+                <td> {{list[1].itemGST.data }}</td>
+                <td> {{list[1].itemTotalPrice.data }}</td>
             </tr>
+            {%endfor%}
+            <tr> <td></td><td></td><td></td><td></td><td>Total</td><td>{{total[0]}}</td></tr>
         </tbody>
     </table>
 </form>
 {%endif%}
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+window.onload = function init() {
+    itemBarcode = document.getElementById("itemBarcode");
+    itemBarcodeText = document.getElementById("itemBarcodeText");
+    itemNameText = document.getElementById("itemNameText");
+    itemName = document.getElementById("itemName");
+    itemBarcodeText.style.display = '';
+    itemBarcode.style.display = '';
+    itemNameText.style.display = '';
+    itemName.style.display = '';
+    if(itemBarcode.value != 'None')
+    {
+        itemName.style.display = 'none';
+        itemNameText.style.display = 'none';
+    }
+    if(itemName.value != 'None')
+    {
+        itemBarcodeText.style.display = 'none';
+        itemBarcode.style.display = 'none';
+    }
+}
+function qtyChanged(id){
+    val = document.getElementById(id).value;
+    if(val == '')
+        val = '0';
+    val = parseInt(val).toString();
+    fetch('/qtyChanged/'+ id + '/' + val).then(function(response){
+        response.json().then(function(data){
+            window.location.replace("http://127.0.0.1:5000/billing/success");
+        });
+    });
+}
+
+function makeVisible(){
+    itemBarcode = document.getElementById("itemBarcode");
+    itemBarcodeText = document.getElementById("itemBarcodeText");
+    itemNameText = document.getElementById("itemNameText");
+    itemName = document.getElementById("itemName");
+    if(itemBarcode.value != 'None')
+    {
+        itemName.style.display = 'none';
+        itemNameText.style.display = 'none';
+    }
+    else{
+        itemName.style.display = '';
+        itemNameText.style.display = '';
+    }
+    if(itemName.value != 'None')
+    {
+        itemBarcode.style.display = 'none';
+        itemBarcodeText.style.display = 'none';
+    }
+    else {
+        itemBarcode.style.display = '';
+        itemBarcodeText.style.display = '';
+    }
+}
+</script>

@@ -4,6 +4,7 @@ install pip3.
 ~pip3 install flask.
 pip3 install -U Flask-SQLAlchemy.
 sudo apt-get install mysql-server.
+Run command in mysql SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));.
 
 
 

@@ -116,11 +116,13 @@ class BillDetails(db.Model):
     billDetailsId = db.Column(db.Integer, primary_key=True, autoincrement=True)
     billDetailsBillId = db.Column(db.Integer, db.ForeignKey('bill.billId'), nullable=False)
     billItemId = db.Column(db.Integer, db.ForeignKey('item.itemId'), nullable=False)
+    billItemPrice = db.Column(db.Integer, nullable=False)
     billItemQty = db.Column(db.Integer, nullable=False)
 
-    def __init__(self, billDetailsBillId, billItemId, billItemQty):
+    def __init__(self, billDetailsBillId, billItemId, billItemPrice, billItemQty):
         self.billDetailsBillId = billDetailsBillId
         self.billItemId = billItemId
+        self.billItemPrice = billItemPrice
         self.billItemQty = billItemQty
 
 

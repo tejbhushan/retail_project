@@ -8,7 +8,7 @@
     {{fillingform.locationCheck(onclick='setDefaults()')}}
     <h6>Note - Click on Lock Parameters before begninning </h6>
     {{fillingform.existingItemBarcode(id = "existingItemBarcode", onchange="makeVisible()") }}
-    {{fillingform.newItemBarCode(placeholder="New Item Bar Code", id="newItemBarCode")}}
+    {{fillingform.newItemBarcode(placeholder="New Item Bar Code", id="newItemBarcode")}}
     {{fillingform.itemName(placeholder="Update Item Name ", id="itemName")}}
     {{fillingform.itemGST(placeholder="Item GST", id="itemGST")}}
     {{fillingform.updatePrice(placeholder=" Update Price", id='updatePrice')}}
@@ -67,7 +67,7 @@ function setDefaults(){
 }
 
 function makeVisible() {
-    newItemBarCode = document.getElementById("newItemBarCode");
+    newItemBarcode = document.getElementById("newItemBarcode");
     existingItemBarcode = document.getElementById("existingItemBarcode");
     addOrRemove = document.getElementById("addOrRemove");
     expiry = document.getElementById("expiry");
@@ -83,21 +83,21 @@ function makeVisible() {
     itemName.style.display = '';
     itemGST.style.display = '';
     updatePrice.style.display = '';
-    newItemBarCode.style.display = '';
+    newItemBarcode.style.display = '';
 
     if(existingItemBarcode.value != 0) {
-        newItemBarCode.style.display = 'none';
+        newItemBarcode.style.display = 'none';
         expiry.style.display = 'none';
     }
     else {
         expirySel.style.display = 'none';
-        newItemBarCode.style.display = '';
+        newItemBarcode.style.display = '';
         expiry.style.display = '';
     }
     if(addOrRemove.value == 1) {
         removeReason.style.display = '';
         expiry.style.display = 'none';
-        newItemBarCode.style.display = 'none';
+        newItemBarcode.style.display = 'none';
         itemName.style.display = 'none';
         updatePrice.style.display = 'none';
         itemGST.style.display = 'none';

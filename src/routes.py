@@ -1,6 +1,6 @@
 from flask import Flask, request, session, redirect, url_for, render_template, flash, jsonify
 from . models import User, db, ItemBranchRel, Branch, Item, Bill, Customer
-from . forms import SignUpForm, SignInForm, FillingForm, BranchForm, BillForm, SearchInventoryForm
+from . forms import SignUpForm, SignInForm, FillingForm, BranchForm, BillForm, SearchInventoryForm, BillDetailsForm
 from src import app
 import datetime
 from sqlalchemy import func
@@ -26,7 +26,7 @@ def signin():
             session['userAccess'] = userLog.userAccess
             session['current_user'] = userLog.username
             session['user_available'] = True
-            return redirect(url_for('billing'))
+            return redirect(url_for('billing', error='success'))
         else:
             error = 'invalid creds'
     return render_template('signin.html', signinform=signinform, error=error)
@@ -91,7 +91,7 @@ def updateInventory(error):
             session['setBranchOutletOrNot'] = request.form['branchOutletOrNot']
             session['setBranchUnitName'] = request.form['branchUnitName']
             session['setAddOrRemove'] = request.form['addOrRemove']
-            return redirect(url_for('updateInventory', error='Parameters Fix'))
+            return redirect(url_for('updateInventory', error='Parameters Fixed'))
         elif fillingform.submit.data:
             error = fillingform.validate(branchLog.branchId)
             if error is not True:
@@ -113,21 +113,23 @@ def updateInventory(error):
                         if fillingform.addOrRemove.data == '0':
                             itemExistInBranchInventory.relItemAvailableQuantity = str(int(itemExistInBranchInventory\
                             .relItemAvailableQuantity) + int(fillingform.itemQuantity.data))
-                        elif int(itemExistInBranchInventory.relItemAvailableQuantity) > int(fillingform.itemQuantity.data):
+                        elif int(itemExistInBranchInventory.relItemAvailableQuantity) >= int(fillingform.itemQuantity.data):
                             itemExistInBranchInventory.relItemAvailableQuantity = str(int(itemExistInBranchInventory\
                             .relItemAvailableQuantity) - int(fillingform.itemQuantity.data))
                         else:
                             return redirect(url_for('updateInventory', error='available quantity is less than removing quantity'))
                     itemExistInBranchInventory.relLastfillDateTime = datetime.datetime.now().strftime('%Y-%m-%d')
+                    if itemExistInBranchInventory.relItemAvailableQuantity == '0':
+                        db.session.delete(itemExistInBranchInventory)
                 else:
                     if fillingform.expiryDate.data == '':
                         fillingform.expiryDate.data = None
-                    item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
+                    item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarcode.data).first()
                     #item table itself doesnot have, hence feed to item table first
                     if item is None:
-                        db.session.add(Item(fillingform.itemName.data.lower(), fillingform.itemGST.data, fillingform.newItemBarCode.data))
+                        db.session.add(Item(fillingform.itemName.data.lower(), fillingform.itemGST.data, fillingform.newItemBarcode.data))
                         db.session.commit()
-                        item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarCode.data).first()
+                        item = Item.query.filter(Item.itemBarcode == fillingform.newItemBarcode.data).first()
                     db.session.add(ItemBranchRel(item.itemId, branchLog.branchId, fillingform.updatePrice.data,\
                     fillingform.itemQuantity.data, fillingform.expiryDate.data, datetime.datetime.now().strftime('%Y-%m-%d')))
                 db.session.commit()
@@ -197,46 +199,76 @@ def searchInventory(error):
     return render_template('searchInventory.html', searchInventoryForm=searchInventoryForm, session=session, error=error, available_stockHead=\
     available_stockHead, available_stock=available_stock)
 
-
-@app.route('/billing', methods=['GET', 'POST'])
-def billing(listItems = []):
+#TODO remove this if multiple clients and check for session alternatives
+billDetailList = []
+index = [0]
+@app.route('/billing/<error>', methods=['GET', 'POST'])
+def billing(error='success'):
+    global billDetailList, index
     if session['user_available'] is False:
         return redirect(url_for('signin'))
-
-    query = db.session.query(Item.itemBarcode).filter(ItemBranchRel.relItemId == Item.itemId).\
-    filter(ItemBranchRel.relBranchId == session['branchId']).all()
-    if query is None:
-        return render_template('branch.html', user=session['current_user'], userAccess=session['userAccess'],\
-         areaName=session['branchAreaName'], error='No Stock')
-
-    userId = User.query.filter(User.username == session['current_user']).first().userId
+    elif session['userAccess'] != 'U':
+        return render_template('billing.html', session=session, error='only User supported')
+    branchId = session['branchId']
     billform = BillForm()
-    billform.itemBarcode.choices = [(bcodes[0], bcodes[0]) for bcodes in query]
+    billform.itemBarcode.choices = [('None', 'None')] + [(ibcodes[0], ibcodes[0]) for ibcodes in db.session.query(Item.itemBarcode).all()]
+    billform.itemName.choices = [('None', 'None')] + [(iNames[0], iNames[0]) for iNames in db.session.query(Item.itemName).all()]
+    total = [0]
+    for i, blist in enumerate(billDetailList):
+        if blist[1].itemQuantity.data == '0':
+            billDetailList.pop(i)
+            break
+
     if request.method == 'POST':
         if billform.next.data:
-            item = Item.query.filter(Item.itemBarcode == billform.itemBarcode.data).first()
-            itemrel = db.session.query(ItemBranchRel).filter(ItemBranchRel.relItemId ==\
-            item.itemId).filter(ItemBranchRel.relBranchId == session['branchId']).first()
-            total=listItems[-1][4] if listItems else 0
-            listItems.append([billform.itemBarcode.data, item.itemName, itemrel.relItemPrice\
-            , billform.itemQuantity.data, total + int(itemrel.relItemPrice)*int(billform.itemQuantity.data)])
-            itemrel.relItemAvailableQuantity = str(int(itemrel.relItemAvailableQuantity) - int(billform.itemQuantity.data))
-            db.session.commit()
+            error = billform.validate()
+            if error != 'success':
+                return redirect(url_for('billing', error=error))
+            if billform.itemBarcode.data != 'None':
+                item = Item.query.filter(Item.itemBarcode == billform.itemBarcode.data).first()
+            elif billform.itemName.data != 'None':
+                item = Item.query.filter(Item.itemName == billform.itemName.data).first()
+            itemDetails = ItemBranchRel.query.filter(ItemBranchRel.relItemId == item.itemId, ItemBranchRel.\
+            relBranchId == branchId)#.first()
+            itemAvailableQuantity = '0'
+            for details in itemDetails:
+                itemAvailableQuantity = str(int(itemAvailableQuantity) + int(details.relItemAvailableQuantity))
+            itemDetails = itemDetails.first()
+            if int(billform.itemQuantity.data) > int(itemAvailableQuantity):
+                return redirect(url_for('billing', error="Ordered Item Quantity not available in store, available quantity is "+itemAvailableQuantity))
+            billDetailsForm = BillDetailsForm()
+            billDetailsForm.itemBarcode.data = item.itemBarcode
+            billDetailsForm.itemName.data = item.itemName
+            billDetailsForm.itemGST.data = item.itemGST
+            # billDetailsForm.itemName.data = billform.itemName.data
+            billDetailsForm.itemPrice.data = itemDetails.relItemPrice
+            billDetailsForm.itemQuantity.data = billform.itemQuantity.data
+            billDetailsForm.itemTotalPrice.data = str(int(billform.itemQuantity.data) * int(itemDetails.relItemPrice))
+            #already existing item in cart
+            flag = 0
+            for i, blist in enumerate(billDetailList):
+                # print(billDetailsForm.itemBarcode.data, blist[1].itemBarcode.data,billDetailsForm.itemName.data,blist[1].itemName.data)
+                if billDetailsForm.itemBarcode.data == blist[1].itemBarcode.data or billDetailsForm.itemName.data == blist[1].itemName.data:
+                    billDetailList[i][1].itemQuantity.data = str(int(blist[1].itemQuantity.data) + int(billDetailsForm.itemQuantity.data))
+                    billDetailList[i][1].itemTotalPrice.data = str(int(blist[1].itemTotalPrice.data) + int(billDetailsForm.itemTotalPrice.data))
+                    flag = 1
+                    break
+            if flag == 0:
+                index[0] += 1
+                billDetailList.append([index[0], billDetailsForm])
+            # print(billDetailList)
         if billform.submit.data:
-            try:
-                customerId = Customer.query.filter(Customer.customerName == billform.customerName.data).first().customerId
-            except Exception as e:
-                customerId = 0
-            row = ''
-            for list in listItems:
-                row += '('+list[1]+':'+list[2]+':'+list[3]+')'
-            print(row)
-            db.session.add(Bill(userId, session['branchId'], customerId, row, listItems[-1][4]))
-            db.session.commit()
-            listItems.clear()
-            return redirect(url_for('billing'))
-    return render_template('billing.html', session=session, billform=billform, listItems=listItems,\
-    total=listItems[-1][4] if listItems else 0)
+            # for i, blist in enumerate(billDetailList):
+            #     itemBranchRel.query.filter(ItemBranchRel.relBranchId == branchId, )
+            total[0] = 0
+            index[0] = 0
+            billDetailList.clear()
+
+    for blist in billDetailList:
+        total[0] += int(blist[1].itemTotalPrice.data)
+
+    return render_template('billing.html', session=session, billform=billform, billDetailList=billDetailList, total=total\
+    , error=error)
 
 
 
@@ -342,6 +374,16 @@ def expiryDate(itemBarcode):
         expiryDateDict['name'] = expiryDate[0].strftime('%Y-%m-%d') if expiryDate[0] else expiryDate[0]
         expiryDatesArray.append(expiryDateDict)
     return jsonify({'expiryDates': expiryDatesArray})
+
+
+@app.route('/qtyChanged/<id>/<val>')
+def qtyChanged(id, val):
+    global billDetailList
+    for i, blist in enumerate(billDetailList):
+        if int(id) == blist[0]:
+            billDetailList[i][1].itemQuantity.data = val
+            billDetailList[i][1].itemTotalPrice.data = str(int(billDetailList[i][1].itemQuantity.data) * int(billDetailList[i][1].itemPrice.data))
+    return jsonify({'no':0})
 
 
 
