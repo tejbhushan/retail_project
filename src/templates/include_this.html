@@ -31,7 +31,7 @@ tr:nth-child(even) {
 <h5> Welcome {{session['current_user']}} | Role - {{session['userAccess']}} | Area - {{session['branchAreaName']}} | Unit - {{session['branchUnitName']}}</h5>
 <h6>
     {%if session['userAccess'] != 'U' %}
-        <a href="{{ url_for('sales') }}"> Total Sales </a> |
+        <a href="{{ url_for('sales', error='success') }}"> Total Sales </a> |
         <a href="{{ url_for('branch', error='success') }}">Branch Info</a> |
         <a href="{{ url_for('signup', error='success') }}">User Info</a> |
     {%endif%}

@@ -79,23 +79,24 @@ class ItemBranchRel(db.Model):
         self.relItemExpiry = relItemExpiry
         self.relLastfillDateTime = relLastfillDateTime
 
-class Customer(db.Model):
-    __tablename__ = 'customer'
-    customerId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    customerName = db.Column(db.String(20), unique=True, nullable=False)
-    customerMobile = db.Column(db.String(15))
-    customerDatetime = db.Column(db.DateTime, default=datetime.datetime.now)
-
-    def __init__(self, customerName, customerMobile):
-        self.customerName = customerName
-        self.customerMobile = customerMobile
+# class Customer(db.Model):
+#     __tablename__ = 'customer'
+#     customerId = db.Column(db.Integer, primary_key=True, autoincrement=True)
+#     customerName = db.Column(db.String(20), unique=True, nullable=False)
+#     customerMobile = db.Column(db.String(15))
+#     customerDatetime = db.Column(db.DateTime, default=datetime.datetime.now)
+#
+#     def __init__(self, customerName, customerMobile):
+#         self.customerName = customerName
+#         self.customerMobile = customerMobile
 
 class Bill(db.Model):
     __tablename__ = 'bill'
     billId = db.Column(db.Integer, primary_key=True, autoincrement=True)
     billUserId = db.Column(db.Integer, db.ForeignKey('user.userId'), nullable=False)
     billBranchId = db.Column(db.Integer, db.ForeignKey('branch.branchId'), nullable=False)
-    billCustomerId = db.Column(db.Integer, db.ForeignKey('customer.customerId'), nullable=False)
+    # billCustomerId = db.Column(db.Integer, db.ForeignKey('customer.customerId'), nullable=False)
+    billCustomerName = db.Column(db.String(10), nullable=True)
     billQuantity = db.Column(db.String(3), nullable=False)
     billAmount = db.Column(db.String(6), nullable=False)
     billDateTime = db.Column(db.DateTime, default=datetime.datetime.now)
@@ -104,10 +105,10 @@ class Bill(db.Model):
     # branch = relationship(Branch, backref=backref('bill', cascade='all, delete-orphan'))
     # customer = relationship(Customer, backref=backref('bill', cascade='all, delete-orphan'))
 
-    def __init__(self, billUserId, billBranchId, billCustomerId, billQuantity, billAmount):
+    def __init__(self, billUserId, billBranchId, billCustomerName, billQuantity, billAmount):
         self.billUserId = billUserId
         self.billBranchId = billBranchId
-        self.billCustomerId = billCustomerId
+        self.billCustomerName = billCustomerName
         self.billQuantity = billQuantity
         self.billAmount = billAmount
 
@@ -116,6 +117,7 @@ class BillDetails(db.Model):
     billDetailsId = db.Column(db.Integer, primary_key=True, autoincrement=True)
     billDetailsBillId = db.Column(db.Integer, db.ForeignKey('bill.billId'), nullable=False)
     billItemId = db.Column(db.Integer, db.ForeignKey('item.itemId'), nullable=False)
+    #because in future the price may change
     billItemPrice = db.Column(db.Integer, nullable=False)
     billItemQty = db.Column(db.Integer, nullable=False)
 
@@ -141,8 +143,8 @@ if a == 0 and log is None:
     # db.session.add(Item('cococola-600ml', '123332112'))
     # db.session.add(Item('cococola-2l', '12331112612'))
     # db.session.add(Item('maggi-300g', '1233111212'))
-    db.session.add(Customer('expiry', '1111111111'))
-    db.session.add(Customer('ram', '9768842000'))
+    # db.session.add(Customer('expiry', '1111111111'))
+    # db.session.add(Customer('ram', '9768842000'))
     db.session.commit()
     # barcodes = [12331112, 123332112, 12331112612, 1233111212]
     # price = [200, 50, 80, 35]

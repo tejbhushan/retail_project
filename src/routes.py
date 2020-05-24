@@ -1,6 +1,6 @@
 from flask import Flask, request, session, redirect, url_for, render_template, flash, jsonify
-from . models import User, db, ItemBranchRel, Branch, Item, Bill, Customer
-from . forms import SignUpForm, SignInForm, FillingForm, BranchForm, BillForm, SearchInventoryForm, BillDetailsForm
+from . models import User, db, ItemBranchRel, Branch, Item, Bill, BillDetails
+from . forms import SignUpForm, SignInForm, FillingForm, BranchForm, BillForm, SearchInventoryForm, BillDetailsForm, SalesForm
 from src import app
 import datetime
 from sqlalchemy import func
@@ -208,16 +208,17 @@ def billing(error='success'):
     if session['user_available'] is False:
         return redirect(url_for('signin'))
     elif session['userAccess'] != 'U':
-        return render_template('billing.html', session=session, error='only User supported')
+        return redirect(url_for('sales', error='user only can bill'))
     branchId = session['branchId']
     billform = BillForm()
     billform.itemBarcode.choices = [('None', 'None')] + [(ibcodes[0], ibcodes[0]) for ibcodes in db.session.query(Item.itemBarcode).all()]
     billform.itemName.choices = [('None', 'None')] + [(iNames[0], iNames[0]) for iNames in db.session.query(Item.itemName).all()]
-    total = [0]
-    for i, blist in enumerate(billDetailList):
-        if blist[1].itemQuantity.data == '0':
-            billDetailList.pop(i)
-            break
+    totalPriceAndQuantity = [0, 0]
+    #donot remove
+    # for i, blist in enumerate(billDetailList):
+    #     if blist[1].itemQuantity.data == '0':
+    #         billDetailList.pop(i)
+    #         break
 
     if request.method == 'POST':
         if billform.next.data:
@@ -257,17 +258,26 @@ def billing(error='success'):
                 index[0] += 1
                 billDetailList.append([index[0], billDetailsForm])
             # print(billDetailList)
+        for blist in billDetailList:
+            totalPriceAndQuantity[0] += int(blist[1].itemTotalPrice.data)
+            totalPriceAndQuantity[1] += int(blist[1].itemQuantity.data)
+        print(totalPriceAndQuantity)
         if billform.submit.data:
-            # for i, blist in enumerate(billDetailList):
-            #     itemBranchRel.query.filter(ItemBranchRel.relBranchId == branchId, )
-            total[0] = 0
+            if totalPriceAndQuantity[1] != 0:
+                userLog = User.query.filter_by(username=session['current_user']).first()
+                db.session.add(Bill(userLog.userId, session['branchId'], billform.customerName.data, str(totalPriceAndQuantity[1]), str(totalPriceAndQuantity[0])))
+                db.session.commit()
+                billId = db.session.query(func.max(Bill.billId)).first()[0]
+                for i, blist in enumerate(billDetailList):
+                    item = Item.query.filter(Item.itemBarcode == blist[1].itemBarcode.data).first()
+                    itemDetails = ItemBranchRel.query.filter(ItemBranchRel.relBranchId == branchId, ItemBranchRel.relItemId == item.itemId).first()
+                    db.session.add(BillDetails(billId, item.itemId, itemDetails.relItemPrice, blist[1].itemQuantity.data))
+                db.session.commit()
             index[0] = 0
             billDetailList.clear()
 
-    for blist in billDetailList:
-        total[0] += int(blist[1].itemTotalPrice.data)
 
-    return render_template('billing.html', session=session, billform=billform, billDetailList=billDetailList, total=total\
+    return render_template('billing.html', session=session, billform=billform, billDetailList=billDetailList, totalPriceAndQuantity=totalPriceAndQuantity\
     , error=error)
 
 
@@ -309,23 +319,68 @@ def branch(error):
      branchLog=branchLog1, branchHead=branchHead, session=session)
 
 
-@app.route('/sales')
-def sales():
+@app.route('/sales/<error>', methods=['GET', 'POST'])
+def sales(error):
     if session['user_available'] is False:
         return redirect(url_for('signin'))
+    if session['userAccess'] == 'U':
+        return redirect(url_for('billing', error='user cannot view sales page'))
 
-    salesHead = ['#', 'Customer Name', 'List', 'Total', 'DateTime']
-    if session['branchAreaName'] == 'All':
-        salesDone = db.session.query(Bill.billId, Customer.customerName, \
-        Bill.billList, Bill.billAmount, Bill.billDateTime).all()
-    else:
-        salesDone = db.session.query(Bill.billId, Customer.customerName, \
-        Bill.billList, Bill.billAmount, Bill.billDateTime)\
-        .filter(Bill.billBranchId == session['branchId']).all()
+    salesHead = ['Bill Number', 'Customer Name', 'User Name', 'Branch Area', 'Branch Type', 'Branch Unit', 'Total Quantity', 'Total Price', 'Date Time']
+    salesDone = db.session.query(Bill.billId, Bill.billCustomerName, User.username, Branch.branchArea, Branch.branchOutletOrNot, Branch.branchUnitName\
+    , Bill.billQuantity, Bill.billAmount, Bill.billDateTime).filter(Bill.billUserId == User.userId, Bill.billBranchId == Branch.branchId)
 
-    return render_template('sales.html', session=session, salesHead=salesHead, salesDone=salesDone)
+    salesForm = SalesForm()
+    salesForm.branchArea.choices = [(None, 'All')] + [(branchArea[0], branchArea[0]) for branchArea in \
+    db.session.query(Branch.branchArea).group_by(Branch.branchArea).all()]
+    salesForm.branchUnitName.choices = [(None, 'All')] + [(branchUnitName[0], branchUnitName[0]) for branchUnitName in \
+    db.session.query(Branch.branchUnitName).group_by(Branch.branchUnitName).all()]
+    salesForm.userSearch.choices = [(None, 'All')] + [(un.username, un.username) for un in User.query.all()]
 
+    if request.method == 'POST':
+        # print(salesForm.branchArea.data, salesForm.branchOutletOrNot.data, salesForm.branchUnitName.data,\
+        # salesForm.userSearch.data, salesForm.customerSearch.data, salesForm.fromDate.data, salesForm.tillDate.data)
+        error = salesForm.validate()
+        if error is not True:
+            return redirect(url_for('sales', error=error))
+        else:
+            if salesForm.branchArea.data != 'None':
+                salesDone = salesDone.filter(Branch.branchArea == salesForm.branchArea.data)
+            if salesForm.branchOutletOrNot.data != 'None':
+                salesDone = salesDone.filter(Branch.branchOutletOrNot == salesForm.branchOutletOrNot.data)
+            if salesForm.branchUnitName.data != 'None':
+                salesDone = salesDone.filter(Branch.branchUnitName == salesForm.branchUnitName.data)
+            if salesForm.userSearch.data != 'None':
+                salesDone = salesDone.filter(User.username == salesForm.userSearch.data)
+            if salesForm.customerSearch.data != 'None':
+                salesDone = salesDone.filter(Bill.billCustomerName == salesForm.customerSearch.data)
+            if salesForm.fromDate.data != '':
+                year, month, day = salesForm.fromDate.data.split('-')
+                fromDate = datetime.datetime(int(year),int(month),int(day))
+                salesDone = salesDone.filter(Bill.billDateTime >= fromDate)
+            if salesForm.tillDate.data != '':
+                year, month, day = salesForm.tillDate.data.split('-')
+                tillDate = datetime.datetime(int(year),int(month),int(day))
+                salesDone = salesDone.filter(Bill.billDateTime <= tillDate)
+            # print(salesDone)
+            error = 'success'
+    salesDone1 = salesDone.all()
+    salesDone = []
+    for sales in salesDone1:
+        salesDone.append([sales[0], [sales[1], sales[2], sales[3], sales[4], sales[5], sales[6], sales[7], sales[8]]])
 
+    return render_template('sales.html', session=session, salesHead=salesHead, error=error, salesDone=salesDone, salesForm=salesForm)
+
+@app.route('/saleDetail/<billId>')
+def saleDetail(billId):
+    if session['user_available'] is False:
+        return redirect(url_for('signin'))
+    saleDetailHead = ['ItemName', 'Item Price', 'Item Quantity']
+    saleDetail = db.session.query(Item.itemName, BillDetails.billItemPrice, BillDetails.billItemQty).filter(BillDetails.billItemId == Item.itemId\
+    , BillDetails.billDetailsBillId == billId).all()
+    print(billId, saleDetail)
+    return render_template('saleDetail.html', session=session, saleDetailHead=saleDetailHead, saleDetail=saleDetail, bill=Bill.query.\
+    filter(Bill.billId == billId).first())
 
 
 @app.route('/logout')

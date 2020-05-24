@@ -1,6 +1,17 @@
 {% include "include_this.html" %}
+<h2 >In Sales</h2>
+<form method="POST">
+    <b>Branch Area</b>{{ salesForm.branchArea }}
+    <b>Branch Type</b>{{ salesForm.branchOutletOrNot }}
+    <b>Branch Name</b>{{ salesForm.branchUnitName }}
+    <br>
+    <b>User Name</b>{{ salesForm.userSearch }}
+    <b>Customer Name</b>{{ salesForm.customerSearch(placeholder='Customer Name')}}
+    <b>From Date</b>{{ salesForm.fromDate(placeholder='From Date yyyy-mm-dd')}}
+    <b>Till Date</b>{{ salesForm.tillDate(placeholder='Till Date yyyy-mm-dd')}}
+    {{ salesForm.submit}}
+</form>
 <h6>{{error}}</h6>
-
 
 <table>
     <thead>
@@ -11,8 +22,15 @@
     <tbody>
     {% for rows in salesDone %}
     <tr>
-        {%for col in rows %}
-        <td> {{col}} </td>
+        <td><a href="{{ url_for('saleDetail', billId=rows[0]) }}">{{rows[0]}}</a></td>
+        {%for col in rows[1] %}
+            {%if col == 'B' %}
+                <td> Shop </td>
+            {%elif col == 'N' %}
+                <td> Storage </td>
+            {% else %}
+                <td> {{col}} </td>
+            {%endif%}
         {%endfor%}
     </tr>
     {%endfor%}

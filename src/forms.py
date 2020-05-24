@@ -83,8 +83,9 @@ class FillingForm(FlaskForm):
         elif self.newItemBarcode.data != '':
             if self.itemName.data == '' or self.updatePrice.data == '' or self.itemGST.data == '':
                 return "New Item bar code requires its item name and updated price and Item GST"
-            itemBranchEntry = db.session.query(ItemBranchRel.relItemBranchId).filter(ItemBranchRel.relItemExpiry\
-            == expiryDate, Item.itemBarcode == self.newItemBarcode.data, ItemBranchRel.relBranchId == branchId).first()
+            itemBranchEntry = db.session.query(ItemBranchRel.relItemBranchId).filter(Item.itemId == ItemBranchRel.relItemId,\
+            Item.itemBarcode == self.newItemBarcode.data, ItemBranchRel.relBranchId == branchId, ItemBranchRel.relItemExpiry == expiryDate).first()
+            print(expiryDate, itemBranchEntry, self.newItemBarcode.data)
             if itemBranchEntry:
                 return "New Item barcode entered already exists with same expiry date, Use select option"
             item = Item.query.filter(Item.itemBarcode == self.newItemBarcode.data).first()
@@ -163,4 +164,46 @@ class SearchInventoryForm(FlaskForm):
                     datetime.datetime(int(year),int(month),int(day))
                 except ValueError :
                     return "Expiry Date not in proper format"
+        return True
+
+class SalesForm(FlaskForm):
+    branchArea = SelectField('Area Name')
+    branchOutletOrNot = SelectField('Branch Type', choices=[(None, 'All'), ('B', 'Shop'), ('N', 'Storage')])
+    branchUnitName = SelectField('Unit Name')
+    userSearch = SelectField('User Name')
+    customerSearch = TextField('Customer Name')
+    fromDate = TextField('From Date')
+    tillDate = TextField('Till Date')
+    submit = SubmitField('Search Inventory')
+
+    def validate(self):
+        if self.fromDate.data != '':
+            try:
+                year, month, day = self.fromDate.data.split('-')
+                if len(year) != 4:
+                    raise ValueError("")
+                date = datetime.datetime(int(year),int(month),int(day))
+            except ValueError :
+                return "From Date not in proper format"
+            fromDate = self.fromDate.data
+        else:
+            fromDate = None
+        if self.tillDate.data != '':
+            try:
+                year, month, day = self.tillDate.data.split('-')
+                if len(year) != 4:
+                    raise ValueError("")
+                date = datetime.datetime(int(year),int(month),int(day))
+            except ValueError :
+                return "Till Date not in proper format"
+            tillDate = self.tillDate.data
+        else:
+            tillDate = None
+        if fromDate and tillDate:
+            year, month, day = self.fromDate.data.split('-')
+            fromDate = datetime.datetime(int(year),int(month),int(day))
+            year, month, day = self.tillDate.data.split('-')
+            tillDate = datetime.datetime(int(year),int(month),int(day))
+            if fromDate > tillDate:
+                return "from date shoild be lesser than till date"
         return True

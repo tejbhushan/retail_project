@@ -1,0 +1,37 @@
+<a href="{{ url_for('sales', error='success') }}">Back</a>
+<h3> Bill ID - {{bill.billId}} | Total - {{bill.billAmount}} | Customer Name - {{bill.customerName}} </h3>
+<table>
+    <thead>
+        {% for col in saleDetailHead %}
+        <th> {{col}} </th>
+        {%endfor%}
+    </thead>
+    <tbody>
+    {% for rows in saleDetail %}
+    <tr>
+        {%for col in rows %}
+            <td> {{col}} </td>
+        {%endfor%}
+    </tr>
+    {%endfor%}
+</tbody>
+</table>
+
+
+<style>
+table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+td, th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
+</style>
