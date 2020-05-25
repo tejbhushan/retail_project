@@ -2,15 +2,20 @@
 {%if branchform %}
 <form action="" method="POST">
     <h2>Update Branch</h2>
-    #{{ newBranchCode }}
+    {% if branchform.branchId.data != None  %}
+        #{{ branchform.branchId(id='branchId', readonly="readonly") }}
+    {% else %}
+        #{{ newBranchCode }}
+    {%endif%}
     {%if session['userAccess'] == 'M' %}
-        {{ branchform.branchArea(placeholder="Area Name", readonly="readonly") }}
+        {{ branchform.branchArea(placeholder="Area Name", readonly="readonly", id='branchArea') }}
     {% else %}
         {{ branchform.branchArea(placeholder="Area Name") }}
     {% endif %}
-    {{ branchform.branchOutletOrNot }}
-    {{ branchform.branchUnitName(placeholder="Unit Name") }}
-    {{ branchform.submit}}
+    {{ branchform.branchOutletOrNot(id='branchOutletOrNot') }}
+    {{ branchform.branchUnitName(placeholder="Unit Name", id='branchUnitName') }}
+    {{ branchform.submit }}
+    {{ branchform.modify(id='modify', onclick='modifyBranch()') }}
   </form>
  {%endif%}
   <h6> {{ error }}</h6>
@@ -24,17 +29,24 @@
       </thead>
       <tbody>
       {% for rows in branchLog %}
-      <tr>
-          {%for col in rows %}
-              {%if col == 'B' %}
-                  <td> Shop </td>
-              {%elif col == 'N' %}
-                  <td> Storage </td>
-              {% else %}
-                  <td> {{col}} </td>
+          <tr>
+              <td><a href="{{ url_for('branch', error=rows[0]) }}">{{rows[0]}}</a></td>
+              <td>{{rows[1][0]}}</td>
+              {%if rows[1][1] == 'B' %}
+                  <td>Shop</td>
+              {%elif rows[1][1] == 'N' %}
+                  <td>Storage</td>
               {%endif%}
-          {%endfor%}
-      </tr>
+              <td> {{rows[1][2]}} </td>
+          </tr>
       {%endfor%}
       </tbody>
   </table>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+<script>
+function modifyBranch(){
+    $.ajax('/modifyBranch/'+ document.getElementById('branchId').value + '/' + document.getElementById('branchArea').value
+    + '/' + document.getElementById('branchOutletOrNot').value + '/' + document.getElementById('branchUnitName').value).done(alert('success'));
+}
+</script>

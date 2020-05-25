@@ -24,7 +24,7 @@ def signin():
             session['branchOutletOrNot'] = branchLog.branchOutletOrNot if userLog.userAccess == 'U' else 'All'
             session['branchId'] = userLog.userBranchId
             session['userAccess'] = userLog.userAccess
-            session['current_user'] = userLog.username
+            session['currentUser'] = userLog.username
             session['user_available'] = True
             return redirect(url_for('billing', error='success'))
         else:
@@ -37,27 +37,45 @@ def signup(error):
     if session['user_available'] is False:
         return redirect(url_for('signin'))
     signupform = SignUpForm()
-    userHead = ['#', 'Username', 'Branch Area', 'User Access', 'Branch Type', 'Branch Unit', 'Modify']
+    userHead = ['#Modify', 'Username', 'User Access', 'Branch Area', 'Branch Type', 'Branch Unit']
     if session['userAccess'] == 'O':
         signupform.userAccess.choices = [('M', 'Manager'), ('U', 'User')]
         signupform.branchArea.choices = [(bAN[0], bAN[0]) for bAN in db.session.query(Branch.branchArea).group_by\
         (Branch.branchArea).all()]
-        userLog = db.session.query(User.userId, User.username, Branch.branchArea, User.userAccess, Branch.\
+        userLog1 = db.session.query(User.userId, User.username, User.userAccess, Branch.branchArea, Branch.\
         branchOutletOrNot, Branch.branchUnitName).filter(User.userBranchId == Branch.branchId).all()
     elif session['userAccess'] == 'M':
         signupform.userAccess.choices = [('U', 'User')]
         signupform.branchArea.choices = [(session['branchAreaName'], session['branchAreaName'])]
-        userLog = db.session.query(User.userId, User.username, Branch.branchArea, User.userAccess, Branch.\
+        userLog1 = db.session.query(User.userId, User.username, Branch.branchArea, User.userAccess, Branch.\
         branchOutletOrNot, Branch.branchUnitName).filter(User.userBranchId == Branch.branchId, \
         User.userAccess == 'U', Branch.branchArea == session['branchAreaName']).all()
 
+    #modify User
+    try:
+        if int(error) > 0 and int(error) < 100:
+            uLog = User.query.filter(User.userId == int(error)).first()
+            bLog = Branch.query.filter(Branch.branchId == uLog.userBranchId).first()
+            signupform.username.data = uLog.username
+            signupform.userAccess.data = uLog.userAccess
+            signupform.branchArea.data = bLog.branchArea
+            signupform.branchOutletOrNot.data = bLog.branchOutletOrNot
+            error='success'
+    except Exception:
+        pass
+
     if request.method == 'POST':
-        error = signupform.validate_on_submit()
-        if error[0] is not True:
-            return redirect(url_for('signup', error=error[1]))
-        db.session.add(User(signupform.username.data, signupform.password.data, signupform.userAccess.data, error[1]))
-        db.session.commit()
+        if signupform.submit.data:
+            error = signupform.validate_on_submit()
+            if error[0] is not True:
+                return redirect(url_for('signup', error=error[1]))
+            db.session.add(User(signupform.username.data, signupform.password.data, signupform.userAccess.data, error[1]))
+            db.session.commit()
         return redirect(url_for('signup', error='success'))
+
+    userLog = []
+    for ulog in userLog1:
+        userLog.append([ulog[0], [ulog[1], ulog[2], ulog[3], ulog[4], ulog[5]]])
 
     return render_template('signup.html', signupform=signupform, error=error, userHead=userHead, session=session\
     ,userLog=userLog)
@@ -261,10 +279,10 @@ def billing(error='success'):
         for blist in billDetailList:
             totalPriceAndQuantity[0] += int(blist[1].itemTotalPrice.data)
             totalPriceAndQuantity[1] += int(blist[1].itemQuantity.data)
-        print(totalPriceAndQuantity)
+        # print(totalPriceAndQuantity)
         if billform.submit.data:
             if totalPriceAndQuantity[1] != 0:
-                userLog = User.query.filter_by(username=session['current_user']).first()
+                userLog = User.query.filter_by(username=session['currentUser']).first()
                 db.session.add(Bill(userLog.userId, session['branchId'], billform.customerName.data, str(totalPriceAndQuantity[1]), str(totalPriceAndQuantity[0])))
                 db.session.commit()
                 billId = db.session.query(func.max(Bill.billId)).first()[0]
@@ -285,11 +303,11 @@ def billing(error='success'):
 @app.route('/branch/<error>', methods=['GET', 'POST'])
 def branch(error):
     branchform = BranchForm()
-    branchHead = ['#', 'Area', 'Type', 'Branch Name', 'Modify']
+    branchHead = ['# Modify', 'Area', 'Type', 'Branch Name']
     if session['user_available'] is False:
         return redirect(url_for('signin'))
     if session['userAccess'] == 'U':
-        return render_template('branch.html', user=session['current_user'], userAccess=session['userAccess'],\
+        return render_template('branch.html', user=session['currentUser'], userAccess=session['userAccess'],\
          areaName=session['branchAreaName'], error='User cannot modify branch')
     elif session['userAccess'] == 'M':
         branchform.branchArea.data = session['branchAreaName']
@@ -304,31 +322,46 @@ def branch(error):
     if branchLog is not None:
         newBranchCode = str(int(db.session.query(func.max(Branch.branchCode)).first()[0]) + 1)
 
-    if request.method == 'POST':
-        error = branchform.validate_on_submit()
-        if error is not True:
-            return redirect(url_for('branch', error=error))
-        else:
-            db.session.add(Branch(newBranchCode, branchform.branchArea.data.lower(), branchform.branchOutletOrNot.data, \
-            branchform.branchUnitName.data.lower()))
-            db.session.commit()
-            return redirect(url_for('branch', error="success"))
+    #modify Branch
+    try:
+        if int(error) > 0 and int(error) < 100:
+            bLog = Branch.query.filter(Branch.branchCode == int(error)).first()
+            branchform.branchId.data = error
+            branchform.branchArea.data = bLog.branchArea
+            branchform.branchOutletOrNot.data = bLog.branchOutletOrNot
+            branchform.branchUnitName.data = bLog.branchUnitName
+            error='success'
+    except Exception:
+        pass
 
+    if request.method == 'POST':
+        if branchform.submit.data:
+            error = branchform.validate_on_submit()
+            if error is not True:
+                return redirect(url_for('branch', error=error))
+            else:
+                db.session.add(Branch(newBranchCode, branchform.branchArea.data.lower(), branchform.branchOutletOrNot.data, \
+                branchform.branchUnitName.data.lower()))
+                db.session.commit()
+        return redirect(url_for('branch', error="success"))
+
+    branchLog = []
+    for blog in branchLog1:
+        branchLog.append([blog[0], [blog[1], blog[2], blog[3]]])
 
     return render_template('branch.html', newBranchCode=newBranchCode, branchform=branchform, error=error, \
-     branchLog=branchLog1, branchHead=branchHead, session=session)
+     branchLog=branchLog, branchHead=branchHead, session=session)
 
 
 @app.route('/sales/<error>', methods=['GET', 'POST'])
 def sales(error):
     if session['user_available'] is False:
         return redirect(url_for('signin'))
-    if session['userAccess'] == 'U':
-        return redirect(url_for('billing', error='user cannot view sales page'))
 
     salesHead = ['Bill Number', 'Customer Name', 'User Name', 'Branch Area', 'Branch Type', 'Branch Unit', 'Total Quantity', 'Total Price', 'Date Time']
     salesDone = db.session.query(Bill.billId, Bill.billCustomerName, User.username, Branch.branchArea, Branch.branchOutletOrNot, Branch.branchUnitName\
     , Bill.billQuantity, Bill.billAmount, Bill.billDateTime).filter(Bill.billUserId == User.userId, Bill.billBranchId == Branch.branchId)
+
 
     salesForm = SalesForm()
     salesForm.branchArea.choices = [(None, 'All')] + [(branchArea[0], branchArea[0]) for branchArea in \
@@ -336,6 +369,14 @@ def sales(error):
     salesForm.branchUnitName.choices = [(None, 'All')] + [(branchUnitName[0], branchUnitName[0]) for branchUnitName in \
     db.session.query(Branch.branchUnitName).group_by(Branch.branchUnitName).all()]
     salesForm.userSearch.choices = [(None, 'All')] + [(un.username, un.username) for un in User.query.all()]
+    salesForm.itemNameSearch.choices = [(None, 'All')] + [(iN.itemName, iN.itemName) for iN in Item.query.all()]
+
+    if session['userAccess'] == 'U':
+        salesDone = salesDone.filter(Bill.billBranchId == session['branchId'])
+        salesForm.branchArea.choices = [(session['branchAreaName'], session['branchAreaName'])]
+        salesForm.branchOutletOrNot.choices = [('B', 'Shop')] if session['branchOutletOrNot'] == 'B' else [('N', 'Storage')]
+        salesForm.branchUnitName.choices = [(session['branchUnitName'], session['branchUnitName'])]
+        salesForm.userSearch.choices = [(session['currentUser'], session['currentUser'])]
 
     if request.method == 'POST':
         # print(salesForm.branchArea.data, salesForm.branchOutletOrNot.data, salesForm.branchUnitName.data,\
@@ -352,7 +393,7 @@ def sales(error):
                 salesDone = salesDone.filter(Branch.branchUnitName == salesForm.branchUnitName.data)
             if salesForm.userSearch.data != 'None':
                 salesDone = salesDone.filter(User.username == salesForm.userSearch.data)
-            if salesForm.customerSearch.data != 'None':
+            if salesForm.customerSearch.data != '':
                 salesDone = salesDone.filter(Bill.billCustomerName == salesForm.customerSearch.data)
             if salesForm.fromDate.data != '':
                 year, month, day = salesForm.fromDate.data.split('-')
@@ -362,7 +403,9 @@ def sales(error):
                 year, month, day = salesForm.tillDate.data.split('-')
                 tillDate = datetime.datetime(int(year),int(month),int(day))
                 salesDone = salesDone.filter(Bill.billDateTime <= tillDate)
-            # print(salesDone)
+            if salesForm.itemNameSearch.data != 'None':
+                salesDone = salesDone.filter(Bill.billId == BillDetails.billDetailsBillId, BillDetails.billItemId == Item.itemId, \
+                Item.itemName == salesForm.itemNameSearch.data)
             error = 'success'
     salesDone1 = salesDone.all()
     salesDone = []
@@ -376,9 +419,9 @@ def saleDetail(billId):
     if session['user_available'] is False:
         return redirect(url_for('signin'))
     saleDetailHead = ['ItemName', 'Item Price', 'Item Quantity']
-    saleDetail = db.session.query(Item.itemName, BillDetails.billItemPrice, BillDetails.billItemQty).filter(BillDetails.billItemId == Item.itemId\
-    , BillDetails.billDetailsBillId == billId).all()
-    print(billId, saleDetail)
+    saleDetail = db.session.query(Item.itemName, BillDetails.billItemPrice, BillDetails.billItemQty).filter(\
+    BillDetails.billItemId == Item.itemId, BillDetails.billDetailsBillId == billId).all()
+    # print(billId, saleDetail)
     return render_template('saleDetail.html', session=session, saleDetailHead=saleDetailHead, saleDetail=saleDetail, bill=Bill.query.\
     filter(Bill.billId == billId).first())
 
@@ -441,7 +484,27 @@ def qtyChanged(id, val):
     return jsonify({'no':0})
 
 
+@app.route('/modifyBranch/<branchId>/<branchArea>/<branchOutletOrNot>/<branchUnitName>')
+def modifyBranch(branchId, branchArea, branchOutletOrNot, branchUnitName):
+    bLog = Branch.query.filter(Branch.branchCode == int(branchId)).first()
+    bLog.branchArea = branchArea.lower()
+    bLog.branchOutletOrNot = branchOutletOrNot
+    bLog.branchUnitName = branchUnitName.lower()
+    db.session.commit()
+    return jsonify({'no':0})
 
+
+@app.route('/modifyUser/<username>/<userAccess>/<branchArea>/<branchOutletOrNot>/<branchUnitName>')
+def modifyUser(username, userAccess, branchArea, branchOutletOrNot, branchUnitName):
+    bLog = Branch.query.filter(Branch.branchArea == branchArea, Branch.branchOutletOrNot == branchOutletOrNot, \
+    Branch.branchUnitName == branchUnitName).first()
+    userLog = User.query.filter(User.username == username).first()
+    # print(userLog.userBranchId)
+    userLog.userAccess = userAccess
+    userLog.userBranchId = bLog.branchId
+    # print(userLog.userBranchId)
+    db.session.commit()
+    return jsonify({'no':0})
 
 # if __name__ == '__main__':
 #     app.run()

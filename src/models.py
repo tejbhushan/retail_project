@@ -90,6 +90,8 @@ class ItemBranchRel(db.Model):
 #         self.customerName = customerName
 #         self.customerMobile = customerMobile
 
+#TODO very important remove all foreign keys from bill to branch user and item as bill is a past entity, later changes
+#in branch or so should not impose constraints
 class Bill(db.Model):
     __tablename__ = 'bill'
     billId = db.Column(db.Integer, primary_key=True, autoincrement=True)
